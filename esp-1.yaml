@@ -6,7 +6,7 @@ esp32:
     type: esp-idf
 
 esphome:
-  name: esp32-18
+  name: esp-1
 
 # Enable Home Assistant API
 api:
