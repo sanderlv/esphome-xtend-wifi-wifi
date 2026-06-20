@@ -14,7 +14,7 @@ Connection: Two ESP32 boards stacked and connected via UART pins (RX/TX)
 In my case I have soldered a female pin row and a male pin row and placed 2 ESP32 board on top of each other (stacked).
 
 Only 1 board needs to be powered:
-<img width="626" height="466" alt="image" src="https://github.com/user-attachments/assets/251ef023-6764-42bf-aeac-7c378c0783f6" />
+<img width="313" height="233" alt="image" src="https://github.com/user-attachments/assets/251ef023-6764-42bf-aeac-7c378c0783f6" />
 
 <img width="318" height="366" alt="image" src="https://github.com/user-attachments/assets/8fb8eb4b-185a-4cfb-b071-2ee483100aed" />
 
