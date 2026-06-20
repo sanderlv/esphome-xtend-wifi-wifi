@@ -1,0 +1,49 @@
+#ESP1 - The Xtend connector - Cennct to the Xtend
+
+esp32:
+  board: lolin_s3_mini # Change for other board
+  framework:
+    type: esp-idf
+
+esphome:
+  name: esp32-18
+
+# Enable Home Assistant API
+api:
+
+ota:
+  platform: esphome
+
+# verbindt met het Xtend-toestel zelf, niet met je thuisnetwerk
+wifi:
+  networks:
+    - ssid: "Xtend-xxxxxxxxxx"     # SSID from Xtend
+      password: "xxxxxxxxxx"       # Password from Xtend
+
+logger:
+  baud_rate: 0   # UART vrijhouden voor de databridge
+
+uart:
+  id: uart_bus
+  tx_pin: GPIO16
+  baud_rate: 115200
+
+http_request:
+  timeout: 10s
+
+interval:
+  - interval: 10s
+    then:
+      - http_request.get:
+          url: "http://10.20.30.1/api/stats/values?fields=79b3,7921,7940,50f2,503e,5041,5088,5077,50ae,50f7,5099,506a,63f0,63b3,63df,6a8e,6ac5,71a7,7160,6a53,8e00,8ef9,8e37,8e18,f9f2,65b0,6579,7ed3,629c,6280,62e7,7767,65d9,6505,77c3,7e51,77d2,65c1,6cfb,6c33,65a7,658a,6c8a,6c61,6578,65d0,6c66,62d1,b28c,b2bc,84d1,7e2c,8439,4133,6c53,6c26,6ceb,7ee6,7e81,7e31,47e0"
+          capture_response: true
+          max_response_buffer_size: 4096
+          on_response:
+            then:
+              - lambda: |-
+                  if (response->status_code == 200) {
+                    id(uart_bus).write_str(body.c_str());
+                    id(uart_bus).write_byte('\n');
+                  } else {
+                    ESP_LOGW("xtend", "HTTP fout: %d", response->status_code);
+                  }
