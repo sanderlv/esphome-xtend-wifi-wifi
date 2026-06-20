@@ -1,4 +1,4 @@
-# ESP-2 voor de xTend - This is the 'home network connector' 
+# ESP-2 voor de xTend
 
 substitutions:
   esp_name: esp-2
@@ -6,7 +6,7 @@ substitutions:
   password: YOURPASSWORD
 
 esp32:
-  board: lolin_s3_mini # Coose your board
+  board: lolin_s3_mini # Change for you board
   framework:
     type: esp-idf
 
@@ -14,18 +14,15 @@ wifi:
   ssid: $ssid
   password: $password
   #use_address: 192.168.6.112
-  # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
     ssid: "${esp_name} FBHS"
-    password: 12345678abc
+    password: !secret Fallback_Hotspot
 
 captive_portal:
 
-# Enable logging
 logger:
   level: DEBUG
 
-# Enable Home Assistant API
 api:
 
 ota:
@@ -34,7 +31,7 @@ ota:
 time:
   - platform: homeassistant
     id: homeassistant_time
-    
+
 web_server:
   port: 80
 
@@ -88,7 +85,6 @@ esphome:
           m["8ef9"] = std::make_tuple(id(boiler_ch_hours), 1.0f, false);
           m["8e37"] = std::make_tuple(id(boiler_dhw_hours), 1.0f, false);
           m["8e18"] = std::make_tuple(id(boiler_flame_loss), 1.0f, false);
-          m["f9f2"] = std::make_tuple(id(bivalent_flags), 1.0f, false);
           m["65b0"] = std::make_tuple(id(exhaust_pressure), 0.01f, false);
           m["6579"] = std::make_tuple(id(suction_pressure), 0.01f, false);
           m["7ed3"] = std::make_tuple(id(water_pressure), 0.01f, true);
@@ -98,26 +94,9 @@ esphome:
           m["7767"] = std::make_tuple(id(temp_requested), 0.01f, true);
           m["65d9"] = std::make_tuple(id(temp_exhaust), 0.01f, true);
           m["6505"] = std::make_tuple(id(temp_suction), 0.01f, true);
-          m["77c3"] = std::make_tuple(id(status3_flags), 1.0f, false);
-          m["7e51"] = std::make_tuple(id(heatdemand_status), 1.0f, false);
-          m["77d2"] = std::make_tuple(id(system_io), 1.0f, false);
-          m["65c1"] = std::make_tuple(id(temp_coil), 0.01f, true);
-          m["6cfb"] = std::make_tuple(id(suction_overheat), 0.01f, true);
-          m["6c33"] = std::make_tuple(id(exhaust_overheat), 0.01f, true);
-          m["65a7"] = std::make_tuple(id(freq_actual), 0.01f, false);
-          m["658a"] = std::make_tuple(id(freq_setpoint), 0.01f, false);
-          m["6c8a"] = std::make_tuple(id(fan1_speed), 1.0f, false);
-          m["6c61"] = std::make_tuple(id(fan_speed_setpoint), 1.0f, false);
-          m["6578"] = std::make_tuple(id(working_mode), 1.0f, false);
-          m["65d0"] = std::make_tuple(id(digital_out), 1.0f, false);
           m["6c66"] = std::make_tuple(id(eev_steps), 1.0f, false);
           m["62d1"] = std::make_tuple(id(temp_outdoor), 0.01f, true);
-          m["b28c"] = std::make_tuple(id(boiler_control_flags), 1.0f, false);
-          m["b2bc"] = std::make_tuple(id(boiler_flame_state), 1.0f, false);
           m["84d1"] = std::make_tuple(id(boiler_modulation_level), 0.01f, false);
-          m["7e2c"] = std::make_tuple(id(lockout_code), 1.0f, false);
-          m["8439"] = std::make_tuple(id(boiler_oem_faultcode), 1.0f, false);
-          m["4133"] = std::make_tuple(id(error_code), 1.0f, false);
           m["6c53"] = std::make_tuple(id(temp_subcooling), 0.01f, true);
           m["6c26"] = std::make_tuple(id(temp_condensor_gas), 0.01f, true);
           m["6ceb"] = std::make_tuple(id(temp_condensor_liquid), 0.01f, true);
@@ -134,10 +113,30 @@ interval:
             id(uart_bus).read_byte(&c);
             if (c == '\n') {
               json::parse_json(id(line_buffer), [](JsonObject root) -> bool {
-                if (!root.containsKey("stats")) return false;
-                JsonObject stats = root["stats"];
 
-                // generieke velden via de lookup-tabel
+                // FIX 1 — modern ArduinoJson check
+                if (!root["stats"].is<JsonObject>()) return false;
+                JsonObject stats = root["stats"].as<JsonObject>();
+
+                // SELECT MAPPINGS
+                for (JsonPair kv : stats) {
+                  std::string code = kv.key().c_str();
+                  float raw = kv.value().as<float>();
+
+                  if (code == "6578") { const char* o[]={"Idle","Heating","Cooling","Defrost"}; int v=raw; if(v>=0&&v<4) id(working_mode).publish_state(o[v]); continue; }
+                  if (code == "7e51") { const char* o[]={"No demand","Heating","DHW","Cooling"}; int v=raw; if(v>=0&&v<4) id(heatdemand_status).publish_state(o[v]); continue; }
+                  if (code == "b2bc") { const char* o[]={"Off","Ignition","Burning"}; int v=raw; if(v>=0&&v<3) id(boiler_flame_state).publish_state(o[v]); continue; }
+                  if (code == "b28c") { const char* o[]={"None","CH","DHW","CH + DHW"}; int v=raw; if(v>=0&&v<4) id(boiler_control_flags).publish_state(o[v]); continue; }
+                  if (code == "77c3") { const char* o[]={"Idle","Heating","Cooling","Defrost","Error"}; int v=raw; if(v>=0&&v<5) id(status3_flags).publish_state(o[v]); continue; }
+                  if (code == "77d2") { id(system_io).publish_state(raw==0?"Off":"On"); continue; }
+                  if (code == "65d0") { id(digital_out).publish_state(raw==0?"Off":"On"); continue; }
+                  if (code == "f9f2") { const char* o[]={"HP only","Boiler only","Hybrid"}; int v=raw; if(v>=0&&v<3) id(bivalent_flags).publish_state(o[v]); continue; }
+                  if (code == "7e2c") { const char* o[]={"None","Warning","Lockout"}; int v=raw; if(v>=0&&v<3) id(lockout_code).publish_state(o[v]); continue; }
+                  if (code == "8439") { const char* o[]={"None","Warning","Fault"}; int v=raw; if(v>=0&&v<3) id(boiler_oem_faultcode).publish_state(o[v]); continue; }
+                  if (code == "4133") { const char* o[]={"None","Warning","Error"}; int v=raw; if(v>=0&&v<3) id(error_code).publish_state(o[v]); continue; }
+                }
+
+                // GENERIEKE SENSOREN
                 for (JsonPair kv : stats) {
                   std::string code = kv.key().c_str();
                   auto it = id(xtend_sensors).find(code);
@@ -153,8 +152,8 @@ interval:
                   s->publish_state(raw * factor);
                 }
 
-                // software versie is tekst, niet numeriek
-                if (stats.containsKey("47e0"))
+                // FIX 2 — modern ArduinoJson check
+                if (stats["47e0"].is<const char*>())
                   id(software_version).publish_state(stats["47e0"].as<std::string>());
 
                 return true;
@@ -343,8 +342,8 @@ sensor:
     accuracy_decimals: 0
 
   - platform: template
-    name: "Xtend Bivalent Flags"
-    id: bivalent_flags
+    name: "Xtend Bivalent Flags (raw)"
+    id: bivalent_flags_raw
     accuracy_decimals: 0
 
   - platform: template
@@ -419,21 +418,6 @@ sensor:
     accuracy_decimals: 1
 
   - platform: template
-    name: "Xtend Status Flags"
-    id: status3_flags
-    accuracy_decimals: 0
-
-  - platform: template
-    name: "Xtend Heat Demand Status"
-    id: heatdemand_status
-    accuracy_decimals: 0
-
-  - platform: template
-    name: "Xtend System IO"
-    id: system_io
-    accuracy_decimals: 0
-
-  - platform: template
     name: "Xtend Coil Temperature"
     id: temp_coil
     unit_of_measurement: "°C"
@@ -486,16 +470,6 @@ sensor:
     accuracy_decimals: 0
 
   - platform: template
-    name: "Xtend Working Mode"
-    id: working_mode
-    accuracy_decimals: 0
-
-  - platform: template
-    name: "Xtend Digital Out"
-    id: digital_out
-    accuracy_decimals: 0
-
-  - platform: template
     name: "Xtend EEV Steps"
     id: eev_steps
     unit_of_measurement: "steps"
@@ -511,36 +485,11 @@ sensor:
     accuracy_decimals: 1
 
   - platform: template
-    name: "Xtend Boiler Control Flags"
-    id: boiler_control_flags
-    accuracy_decimals: 0
-
-  - platform: template
-    name: "Xtend Boiler Flame State"
-    id: boiler_flame_state
-    accuracy_decimals: 0
-
-  - platform: template
     name: "Xtend Boiler Modulation Level"
     id: boiler_modulation_level
     unit_of_measurement: "%"
     state_class: measurement
     accuracy_decimals: 1
-
-  - platform: template
-    name: "Xtend Lockout Code"
-    id: lockout_code
-    accuracy_decimals: 0
-
-  - platform: template
-    name: "Xtend Boiler OEM Fault Code"
-    id: boiler_oem_faultcode
-    accuracy_decimals: 0
-
-  - platform: template
-    name: "Xtend Error Code"
-    id: error_code
-    accuracy_decimals: 0
 
   - platform: template
     name: "Xtend Subcooling Temperature"
@@ -588,3 +537,70 @@ sensor:
     device_class: temperature
     state_class: measurement
     accuracy_decimals: 1
+
+select:
+  - platform: template
+    name: "Xtend Working Mode"
+    id: working_mode
+    options: ["Idle", "Heating", "Cooling", "Defrost"]
+    optimistic: true
+
+  - platform: template
+    name: "Xtend Heat Demand Status"
+    id: heatdemand_status
+    options: ["No demand", "Heating", "DHW", "Cooling"]
+    optimistic: true
+
+  - platform: template
+    name: "Xtend Boiler Flame State"
+    id: boiler_flame_state
+    options: ["Off", "Ignition", "Burning"]
+    optimistic: true
+
+  - platform: template
+    name: "Xtend Boiler Control Flags"
+    id: boiler_control_flags
+    options: ["None", "CH", "DHW", "CH + DHW"]
+    optimistic: true
+
+  - platform: template
+    name: "Xtend Status Flags"
+    id: status3_flags
+    options: ["Idle", "Heating", "Cooling", "Defrost", "Error"]
+    optimistic: true
+
+  - platform: template
+    name: "Xtend System IO"
+    id: system_io
+    options: ["Off", "On"]
+    optimistic: true
+
+  - platform: template
+    name: "Xtend Digital Out"
+    id: digital_out
+    options: ["Off", "On"]
+    optimistic: true
+
+  - platform: template
+    name: "Xtend Bivalent Flags"
+    id: bivalent_flags
+    options: ["HP only", "Boiler only", "Hybrid"]
+    optimistic: true
+
+  - platform: template
+    name: "Xtend Lockout Code"
+    id: lockout_code
+    options: ["None", "Warning", "Lockout"]
+    optimistic: true
+
+  - platform: template
+    name: "Xtend Boiler OEM Fault Code"
+    id: boiler_oem_faultcode
+    options: ["None", "Warning", "Fault"]
+    optimistic: true
+
+  - platform: template
+    name: "Xtend Error Code"
+    id: error_code
+    options: ["None", "Warning", "Error"]
+    optimistic: true
