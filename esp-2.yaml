@@ -1,0 +1,590 @@
+# ESP-2 voor de xTend - This is the 'home network connector' 
+
+substitutions:
+  esp_name: esp-2
+  ssid: YOURSSID
+  password: YOURPASSWORD
+
+esp32:
+  board: lolin_s3_mini # Coose your board
+  framework:
+    type: esp-idf
+
+wifi:
+  ssid: $ssid
+  password: $password
+  #use_address: 192.168.6.112
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "${esp_name} FBHS"
+    password: 12345678abc
+
+captive_portal:
+
+# Enable logging
+logger:
+  level: DEBUG
+
+# Enable Home Assistant API
+api:
+
+ota:
+  platform: esphome
+
+time:
+  - platform: homeassistant
+    id: homeassistant_time
+    
+web_server:
+  port: 80
+
+json:
+
+uart:
+  id: uart_bus
+  rx_pin: GPIO16
+  baud_rate: 115200
+  rx_buffer_size: 4096
+
+globals:
+  - id: line_buffer
+    type: std::string
+    restore_value: false
+    initial_value: '""'
+  - id: xtend_sensors
+    type: std::map<std::string, std::tuple<sensor::Sensor *, float, bool>>
+    restore_value: false
+
+esphome:
+  name: $esp_name
+  includes:
+    - <map>
+    - <tuple>
+  on_boot:
+    then:
+      - lambda: |-
+          auto &m = id(xtend_sensors);
+          m["79b3"] = std::make_tuple(id(roomtemp_1), 0.01f, true);
+          m["7921"] = std::make_tuple(id(roomtemp_set_1), 0.01f, true);
+          m["7940"] = std::make_tuple(id(notification_code), 1.0f, false);
+          m["50f2"] = std::make_tuple(id(power_electric), 0.001f, false);
+          m["503e"] = std::make_tuple(id(hp_power_thermal), 0.001f, false);
+          m["5041"] = std::make_tuple(id(current_cop), 0.1f, false);
+          m["5088"] = std::make_tuple(id(boiler_power_thermal), 0.001f, false);
+          m["5077"] = std::make_tuple(id(power_thermal), 0.001f, false);
+          m["50ae"] = std::make_tuple(id(energy_thermal_heating_prevday), 0.1f, false);
+          m["50f7"] = std::make_tuple(id(cop_heating_prevday), 0.1f, false);
+          m["5099"] = std::make_tuple(id(energy_electric_heating_prevday), 0.1f, false);
+          m["506a"] = std::make_tuple(id(energy_thermal_boiler_prevday), 0.1f, false);
+          m["63f0"] = std::make_tuple(id(thermal_energy_heating_total), 1.0f, false);
+          m["63b3"] = std::make_tuple(id(electric_energy_heating_total), 1.0f, false);
+          m["63df"] = std::make_tuple(id(thermal_energy_boiler_total), 1.0f, false);
+          m["6a8e"] = std::make_tuple(id(start_heating_counter), 1.0f, false);
+          m["6ac5"] = std::make_tuple(id(operation_heating_hours), 1.0f, false);
+          m["71a7"] = std::make_tuple(id(poweron_hours), 1.0f, false);
+          m["7160"] = std::make_tuple(id(poweron_number), 1.0f, false);
+          m["6a53"] = std::make_tuple(id(start_defrost_counter), 1.0f, false);
+          m["8e00"] = std::make_tuple(id(boiler_burner_starts), 1.0f, false);
+          m["8ef9"] = std::make_tuple(id(boiler_ch_hours), 1.0f, false);
+          m["8e37"] = std::make_tuple(id(boiler_dhw_hours), 1.0f, false);
+          m["8e18"] = std::make_tuple(id(boiler_flame_loss), 1.0f, false);
+          m["f9f2"] = std::make_tuple(id(bivalent_flags), 1.0f, false);
+          m["65b0"] = std::make_tuple(id(exhaust_pressure), 0.01f, false);
+          m["6579"] = std::make_tuple(id(suction_pressure), 0.01f, false);
+          m["7ed3"] = std::make_tuple(id(water_pressure), 0.01f, true);
+          m["629c"] = std::make_tuple(id(flow_system), 0.01f, false);
+          m["6280"] = std::make_tuple(id(temp_hp_return), 0.01f, true);
+          m["62e7"] = std::make_tuple(id(temp_hp_supply), 0.01f, true);
+          m["7767"] = std::make_tuple(id(temp_requested), 0.01f, true);
+          m["65d9"] = std::make_tuple(id(temp_exhaust), 0.01f, true);
+          m["6505"] = std::make_tuple(id(temp_suction), 0.01f, true);
+          m["77c3"] = std::make_tuple(id(status3_flags), 1.0f, false);
+          m["7e51"] = std::make_tuple(id(heatdemand_status), 1.0f, false);
+          m["77d2"] = std::make_tuple(id(system_io), 1.0f, false);
+          m["65c1"] = std::make_tuple(id(temp_coil), 0.01f, true);
+          m["6cfb"] = std::make_tuple(id(suction_overheat), 0.01f, true);
+          m["6c33"] = std::make_tuple(id(exhaust_overheat), 0.01f, true);
+          m["65a7"] = std::make_tuple(id(freq_actual), 0.01f, false);
+          m["658a"] = std::make_tuple(id(freq_setpoint), 0.01f, false);
+          m["6c8a"] = std::make_tuple(id(fan1_speed), 1.0f, false);
+          m["6c61"] = std::make_tuple(id(fan_speed_setpoint), 1.0f, false);
+          m["6578"] = std::make_tuple(id(working_mode), 1.0f, false);
+          m["65d0"] = std::make_tuple(id(digital_out), 1.0f, false);
+          m["6c66"] = std::make_tuple(id(eev_steps), 1.0f, false);
+          m["62d1"] = std::make_tuple(id(temp_outdoor), 0.01f, true);
+          m["b28c"] = std::make_tuple(id(boiler_control_flags), 1.0f, false);
+          m["b2bc"] = std::make_tuple(id(boiler_flame_state), 1.0f, false);
+          m["84d1"] = std::make_tuple(id(boiler_modulation_level), 0.01f, false);
+          m["7e2c"] = std::make_tuple(id(lockout_code), 1.0f, false);
+          m["8439"] = std::make_tuple(id(boiler_oem_faultcode), 1.0f, false);
+          m["4133"] = std::make_tuple(id(error_code), 1.0f, false);
+          m["6c53"] = std::make_tuple(id(temp_subcooling), 0.01f, true);
+          m["6c26"] = std::make_tuple(id(temp_condensor_gas), 0.01f, true);
+          m["6ceb"] = std::make_tuple(id(temp_condensor_liquid), 0.01f, true);
+          m["7ee6"] = std::make_tuple(id(temp_supply), 0.01f, true);
+          m["7e81"] = std::make_tuple(id(temp_return), 0.01f, true);
+          m["7e31"] = std::make_tuple(id(temp_setpoint), 0.01f, true);
+
+interval:
+  - interval: 50ms
+    then:
+      - lambda: |-
+          while (id(uart_bus).available()) {
+            uint8_t c;
+            id(uart_bus).read_byte(&c);
+            if (c == '\n') {
+              json::parse_json(id(line_buffer), [](JsonObject root) -> bool {
+                if (!root.containsKey("stats")) return false;
+                JsonObject stats = root["stats"];
+
+                // generieke velden via de lookup-tabel
+                for (JsonPair kv : stats) {
+                  std::string code = kv.key().c_str();
+                  auto it = id(xtend_sensors).find(code);
+                  if (it == id(xtend_sensors).end()) continue;
+
+                  sensor::Sensor *s = std::get<0>(it->second);
+                  float factor = std::get<1>(it->second);
+                  bool filter_na = std::get<2>(it->second);
+
+                  float raw = kv.value().as<float>();
+                  if (filter_na && (raw == 32767 || raw == -32767)) continue;
+
+                  s->publish_state(raw * factor);
+                }
+
+                // software versie is tekst, niet numeriek
+                if (stats.containsKey("47e0"))
+                  id(software_version).publish_state(stats["47e0"].as<std::string>());
+
+                return true;
+              });
+              id(line_buffer).clear();
+            } else {
+              id(line_buffer) += (char) c;
+            }
+          }
+
+text_sensor:
+  - platform: template
+    name: "Xtend Software Version"
+    id: software_version
+
+sensor:
+  - platform: template
+    name: "Xtend Roomtemperature 1"
+    id: roomtemp_1
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+
+  - platform: template
+    name: "Xtend Roomtemperature Setpoint 1"
+    id: roomtemp_set_1
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+
+  - platform: template
+    name: "Xtend Notification Code"
+    id: notification_code
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Xtend Current Power Electric"
+    id: power_electric
+    unit_of_measurement: "kW"
+    device_class: power
+    state_class: measurement
+    accuracy_decimals: 3
+
+  - platform: template
+    name: "Xtend Current HP Power Thermal"
+    id: hp_power_thermal
+    unit_of_measurement: "kW"
+    device_class: power
+    state_class: measurement
+    accuracy_decimals: 3
+
+  - platform: template
+    name: "Xtend Current COP"
+    id: current_cop
+    state_class: measurement
+    accuracy_decimals: 1
+
+  - platform: template
+    name: "Xtend Current Boiler Power Thermal"
+    id: boiler_power_thermal
+    unit_of_measurement: "kW"
+    device_class: power
+    state_class: measurement
+    accuracy_decimals: 3
+
+  - platform: template
+    name: "Xtend Current Power Thermal"
+    id: power_thermal
+    unit_of_measurement: "kW"
+    device_class: power
+    state_class: measurement
+    accuracy_decimals: 3
+
+  - platform: template
+    name: "Xtend Energy Thermal Heating Previous Day"
+    id: energy_thermal_heating_prevday
+    unit_of_measurement: "kWh"
+    device_class: energy
+    state_class: total
+    accuracy_decimals: 1
+
+  - platform: template
+    name: "Xtend COP Heating Previous Day"
+    id: cop_heating_prevday
+    state_class: measurement
+    accuracy_decimals: 1
+
+  - platform: template
+    name: "Xtend Energy Electric Heating Previous Day"
+    id: energy_electric_heating_prevday
+    unit_of_measurement: "kWh"
+    device_class: energy
+    state_class: total
+    accuracy_decimals: 1
+
+  - platform: template
+    name: "Xtend Energy Thermal Boiler Previous Day"
+    id: energy_thermal_boiler_prevday
+    unit_of_measurement: "kWh"
+    device_class: energy
+    state_class: total
+    accuracy_decimals: 1
+
+  - platform: template
+    name: "Xtend Thermal Energy Heating Total"
+    id: thermal_energy_heating_total
+    unit_of_measurement: "kWh"
+    device_class: energy
+    state_class: total_increasing
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Xtend Electric Energy Heating Total"
+    id: electric_energy_heating_total
+    unit_of_measurement: "kWh"
+    device_class: energy
+    state_class: total_increasing
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Xtend Thermal Energy Boiler Total"
+    id: thermal_energy_boiler_total
+    unit_of_measurement: "kWh"
+    device_class: energy
+    state_class: total_increasing
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Xtend Start Heating Counter"
+    id: start_heating_counter
+    state_class: total_increasing
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Xtend Operation Heating Hours"
+    id: operation_heating_hours
+    unit_of_measurement: "h"
+    state_class: total_increasing
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Xtend Power-on Hours"
+    id: poweron_hours
+    unit_of_measurement: "h"
+    state_class: total_increasing
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Xtend Power-on Count"
+    id: poweron_number
+    state_class: total_increasing
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Xtend Start Defrost Counter"
+    id: start_defrost_counter
+    state_class: total_increasing
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Xtend Boiler Burner Starts"
+    id: boiler_burner_starts
+    state_class: total_increasing
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Xtend Boiler CH Hours"
+    id: boiler_ch_hours
+    unit_of_measurement: "h"
+    state_class: total_increasing
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Xtend Boiler DHW Hours"
+    id: boiler_dhw_hours
+    unit_of_measurement: "h"
+    state_class: total_increasing
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Xtend Boiler Flame Loss Count"
+    id: boiler_flame_loss
+    state_class: total_increasing
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Xtend Bivalent Flags"
+    id: bivalent_flags
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Xtend Exhaust Pressure"
+    id: exhaust_pressure
+    unit_of_measurement: "bar"
+    device_class: pressure
+    state_class: measurement
+    accuracy_decimals: 2
+
+  - platform: template
+    name: "Xtend Suction Pressure"
+    id: suction_pressure
+    unit_of_measurement: "bar"
+    device_class: pressure
+    state_class: measurement
+    accuracy_decimals: 2
+
+  - platform: template
+    name: "Xtend Water Pressure"
+    id: water_pressure
+    unit_of_measurement: "bar"
+    device_class: pressure
+    state_class: measurement
+    accuracy_decimals: 2
+
+  - platform: template
+    name: "Xtend System Flow"
+    id: flow_system
+    unit_of_measurement: "L/min"
+    state_class: measurement
+    accuracy_decimals: 2
+
+  - platform: template
+    name: "Xtend HP Return Temperature"
+    id: temp_hp_return
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+
+  - platform: template
+    name: "Xtend HP Supply Temperature"
+    id: temp_hp_supply
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+
+  - platform: template
+    name: "Xtend Requested Temperature"
+    id: temp_requested
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+
+  - platform: template
+    name: "Xtend Exhaust Temperature"
+    id: temp_exhaust
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+
+  - platform: template
+    name: "Xtend Suction Temperature"
+    id: temp_suction
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+
+  - platform: template
+    name: "Xtend Status Flags"
+    id: status3_flags
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Xtend Heat Demand Status"
+    id: heatdemand_status
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Xtend System IO"
+    id: system_io
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Xtend Coil Temperature"
+    id: temp_coil
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+
+  - platform: template
+    name: "Xtend Suction Overheat"
+    id: suction_overheat
+    unit_of_measurement: "°C"
+    state_class: measurement
+    accuracy_decimals: 1
+
+  - platform: template
+    name: "Xtend Exhaust Overheat"
+    id: exhaust_overheat
+    unit_of_measurement: "°C"
+    state_class: measurement
+    accuracy_decimals: 1
+
+  - platform: template
+    name: "Xtend Actual Compressor Frequency"
+    id: freq_actual
+    unit_of_measurement: "Hz"
+    device_class: frequency
+    state_class: measurement
+    accuracy_decimals: 1
+
+  - platform: template
+    name: "Xtend Compressor Frequency Setpoint"
+    id: freq_setpoint
+    unit_of_measurement: "Hz"
+    device_class: frequency
+    state_class: measurement
+    accuracy_decimals: 1
+
+  - platform: template
+    name: "Xtend Fan 1 Speed"
+    id: fan1_speed
+    unit_of_measurement: "rpm"
+    state_class: measurement
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Xtend Fan Speed Setpoint"
+    id: fan_speed_setpoint
+    unit_of_measurement: "rpm"
+    state_class: measurement
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Xtend Working Mode"
+    id: working_mode
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Xtend Digital Out"
+    id: digital_out
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Xtend EEV Steps"
+    id: eev_steps
+    unit_of_measurement: "steps"
+    state_class: measurement
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Xtend Outdoor Temperature"
+    id: temp_outdoor
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+
+  - platform: template
+    name: "Xtend Boiler Control Flags"
+    id: boiler_control_flags
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Xtend Boiler Flame State"
+    id: boiler_flame_state
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Xtend Boiler Modulation Level"
+    id: boiler_modulation_level
+    unit_of_measurement: "%"
+    state_class: measurement
+    accuracy_decimals: 1
+
+  - platform: template
+    name: "Xtend Lockout Code"
+    id: lockout_code
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Xtend Boiler OEM Fault Code"
+    id: boiler_oem_faultcode
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Xtend Error Code"
+    id: error_code
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Xtend Subcooling Temperature"
+    id: temp_subcooling
+    unit_of_measurement: "°C"
+    state_class: measurement
+    accuracy_decimals: 1
+
+  - platform: template
+    name: "Xtend Condensor Refrigerant Gas Temperature"
+    id: temp_condensor_gas
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+
+  - platform: template
+    name: "Xtend Condensor Refrigerant Liquid Temperature"
+    id: temp_condensor_liquid
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+
+  - platform: template
+    name: "Xtend Supply Temperature"
+    id: temp_supply
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+
+  - platform: template
+    name: "Xtend Return Temperature"
+    id: temp_return
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+
+  - platform: template
+    name: "Xtend Setpoint Temperature"
+    id: temp_setpoint
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
