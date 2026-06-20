@@ -1,10 +1,13 @@
 **ESPHome Xtend WiFi-Wifi Configuration**
+
 Complete ESPHome configuration for monitoring an Intergas Xtend heat pump with two stacked ESP32 microcontrollers connected via UART (esp-1 & esp-2).
 
-🎯 Overview
+**🎯 Overview**
+
 This project enables real-time monitoring of 66+ sensors from your Intergas Xtend heat pump system, integrating seamlessly with Home Assistant and uses ESPhome.io
 
 **Hardware Setup**
+
 ESP-1 (UART Bridge): Communicates with the heat pump via UART serial connection
 
 ESP-2 (Master/WiFi): Handles WiFi connectivity and Home Assistant integration
