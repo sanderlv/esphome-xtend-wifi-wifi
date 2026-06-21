@@ -6,7 +6,7 @@ substitutions:
   password: YOURPASSWORD
 
 esp32:
-  board: lolin_s3_mini # Change for you board
+  board: lolin_s3_mini # Change for your board
   framework:
     type: esp-idf
 
@@ -50,6 +50,15 @@ globals:
     initial_value: '""'
   - id: xtend_sensors
     type: std::map<std::string, std::tuple<sensor::Sensor *, float, bool>>
+    restore_value: false
+  - id: heatdemand_status_map
+    type: std::map<int, std::string>
+    restore_value: false
+  - id: lockout_code_map
+    type: std::map<int, std::string>
+    restore_value: false
+  - id: error_code_map
+    type: std::map<int, std::string>
     restore_value: false
 
 esphome:
@@ -103,6 +112,112 @@ esphome:
           m["7ee6"] = std::make_tuple(id(temp_supply), 0.01f, true);
           m["7e81"] = std::make_tuple(id(temp_return), 0.01f, true);
           m["7e31"] = std::make_tuple(id(temp_setpoint), 0.01f, true);
+          // niet gedocumenteerd in parse-message.js -> ruwe codes, geen mapping bekend
+          m["b2bc"] = std::make_tuple(id(boiler_flame_state_raw), 1.0f, false);
+          m["8439"] = std::make_tuple(id(boiler_oem_faultcode_raw), 1.0f, false);
+
+          // status_0.heatdemand_status (key 7e51) - codes uit parse-message.js
+          auto &hd = id(heatdemand_status_map);
+          hd[85]  = "sensortest";
+          hd[86]  = "commissioning";
+          hd[87]  = "crankheating";
+          hd[170] = "service";
+          hd[204] = "dhw";
+          hd[51]  = "dhw_int";
+          hd[240] = "boiler_int";
+          hd[15]  = "boiler_ext";
+          hd[153] = "postrun_boiler";
+          hd[102] = "ch";
+          hd[103] = "ch_wait";
+          hd[104] = "defrosting";
+          hd[0]   = "opentherm";
+          hd[255] = "heatup";
+          hd[24]  = "frost";
+          hd[230] = "starting_ch";
+          hd[231] = "postrun_ch";
+          hd[126] = "standby";
+          hd[127] = "off";
+          hd[37]  = "ch_rf";
+          hd[205] = "dhw_hreco";
+          hd[117] = "starting_cooling";
+          hd[118] = "cooling";
+          hd[119] = "cooling_wait";
+          hd[189] = "postrun_cooling";
+
+          // status_0.lockout_code (key 7e2c) - codes uit parse-message.js
+          auto &lc = id(lockout_code_map);
+          lc[1]   = "LOCKOUT_CH_PUMP";
+          lc[2]   = "LOCKOUT_DHW_PUMP";
+          lc[3]   = "LOCKOUT_CONDENSOR_OVERHEAT";
+          lc[9]   = "LOCKOUT_ERROR_LOCKOUT_DEVICE";
+          lc[10]  = "LOCKOUT_DEFROST_WATER_TEMP_LOW";
+          lc[18]  = "LOCKOUT_HEATPUMP_TYPE_UNCONFIGURED";
+          lc[19]  = "LOCKOUT_BMM_ILLIGAL_SERIAL";
+          lc[20]  = "LOCKOUT_STORAGEHANDLER_SYNC";
+          lc[22]  = "LOCKOUT_FIRMWARE_COMPATIBILITY";
+          lc[23]  = "LOCKOUT_XTP_DEVICE_INTERNAL_FAULT";
+          lc[24]  = "LOCKOUT_XTP_DEVICE_CONFIG_FAULT";
+          lc[25]  = "LOCKOUT_XTP_COMMUNICATION_FAULT";
+          lc[26]  = "LOCKOUT_XTP_START_FAULT";
+          lc[31]  = "LOCKOUT_ERROR_UNKNOWN";
+          lc[37]  = "LOCKOUT_SENSOR_HP_RETURN";
+          lc[38]  = "LOCKOUT_SENSOR_HP_SUPPLY";
+          lc[39]  = "LOCKOUT_SENSOR_SYSTEM_SUPPLY";
+          lc[40]  = "LOCKOUT_SENSOR_OUTDOOR";
+          lc[46]  = "LOCKOUT_SENSOR_BOILER_RETURN";
+          lc[47]  = "LOCKOUT_SENSOR_BOILER_SUPPLY";
+          lc[50]  = "LOCKOUT_CODE_THERMOSTAT_HEATPUMP";
+          lc[51]  = "LOCKOUT_CODE_THERMOSTAT_BOILER";
+          lc[254] = "LOCKOUT_BYPASS_MODE_ACTIVE";
+          lc[255] = "LOCKOUT_NO_ERROR";
+
+          // status_9.errorCode (key 4133) - codes uit parse-message.js
+          auto &ec = id(error_code_map);
+          ec[0]   = "HP_GEN_FAULT_NONE";
+          ec[1]   = "HP_GEN_FAULT_DEFROST_FAILED";
+          ec[2]   = "HP_GEN_FAULT_LOW_PRESSURE";
+          ec[3]   = "HP_GEN_FAULT_HIGH_PRESSURE";
+          ec[4]   = "HP_GEN_FAULT_COMPRESSOR_OUTSIDE_OP_RANGE";
+          ec[5]   = "HP_GEN_FAULT_EXHAUST_TEMP_TOO_HIGH";
+          ec[6]   = "HP_GEN_FAULT_CONDENSOR_TEMP_TOO_HIGH";
+          ec[7]   = "HP_GEN_FAULT_OUTDOORUNIT_SPECIFIC_AUTO_RESTART";
+          ec[8]   = "HP_GEN_FAULT_OUTDOORUNIT_SPECIFIC_LOCKED";
+          ec[9]   = "HP_GEN_FAULT_OUTDOORUNIT_CONTROL_GUARD";
+          ec[10]  = "HP_GEN_FAULT_WATER_FLOW_TOO_LOW";
+          ec[11]  = "HP_GEN_FAULT_WATER_FLOW_TOO_LOW_DEFROST";
+          ec[12]  = "HP_GEN_FAULT_CONDENSOR_GAS_TOO_LOW";
+          ec[13]  = "HP_GEN_FAULT_NO_TOUTDOOR_SENSOR";
+          ec[14]  = "HP_GEN_FAULT_PUMPDOWN_FAILED";
+          ec[15]  = "HP_GEN_FAULT_DSH_TOO_LOW";
+          ec[16]  = "HP_GEN_FAULT_SSH_TOO_LOW";
+          ec[17]  = "HP_GEN_FAULT_SSH_TOO_HIGH";
+          ec[18]  = "HP_GEN_FAULT_COOLING_MODE_TEMPS";
+          ec[19]  = "HP_GEN_FAULT_CONDENSOR_LIQUID_SENSOR";
+          ec[20]  = "HP_GEN_FAULT_XTP_DEVICE_WATER_INLET";
+          ec[21]  = "HP_GEN_FAULT_XTP_DEVICE_WATER_OUTLET";
+          ec[22]  = "HP_GEN_FAULT_XTP_DEVICE_REFRIGERANT_LIQUID";
+          ec[23]  = "HP_GEN_FAULT_XTP_DEVICE_REFRIGERANT_GAS";
+          ec[128] = "AC_BUS_VOLTAGE_HIGH";
+          ec[129] = "AC_BUS_VOLTAGE_LOW";
+          ec[130] = "DC_BUS_OVERVOLTAGE";
+          ec[131] = "COMPRESSOR_OVERCURRENT_HARDWARE";
+          ec[132] = "COMPRESSOR_OVERCURRENT_FIRMWARE";
+          ec[133] = "AC_INPUT_OVERCURRENT_HARDWARE";
+          ec[134] = "AC_INPUT_OVERCURRENT_FIRMWARE";
+          ec[135] = "COMPRESSOR_CURRENT_OVERLOAD";
+          ec[136] = "PHASE_LOSS_LOSS_OF_SYNCHRONISM";
+          ec[137] = "IPM_TEMP_PROTECTION";
+          ec[138] = "OUTDOOR_DC_FAN_FAULT";
+          ec[139] = "SUCTION_TEMP_SENSOR_ERROR";
+          ec[140] = "ODU_DISCHARGE_TEMP_SENSOR_ERROR";
+          ec[141] = "ODU_COIL_TEMP_SENSOR_ERROR";
+          ec[142] = "AMBIENT_TEMP_SENSOR_ERROR";
+          ec[143] = "DISCHARGE_TEMP_HIGH_ERROR";
+          ec[144] = "CONDENSING_TEMP_HIGH_ERROR";
+          ec[145] = "ODU_IDU_COMMUNICATION_ERROR";
+          ec[146] = "DC_BUS_UNDERVOLTAGE";
+          ec[255] = "NO_ERROR";
+          ec[65535] = "UNCONNECTED";
 
 interval:
   - interval: 50ms
@@ -123,17 +238,98 @@ interval:
                   std::string code = kv.key().c_str();
                   float raw = kv.value().as<float>();
 
-                  if (code == "6578") { const char* o[]={"Idle","Heating","Cooling","Defrost"}; int v=raw; if(v>=0&&v<4) id(working_mode).publish_state(o[v]); continue; }
-                  if (code == "7e51") { const char* o[]={"No demand","Heating","DHW","Cooling"}; int v=raw; if(v>=0&&v<4) id(heatdemand_status).publish_state(o[v]); continue; }
-                  if (code == "b2bc") { const char* o[]={"Off","Ignition","Burning"}; int v=raw; if(v>=0&&v<3) id(boiler_flame_state).publish_state(o[v]); continue; }
-                  if (code == "b28c") { const char* o[]={"None","CH","DHW","CH + DHW"}; int v=raw; if(v>=0&&v<4) id(boiler_control_flags).publish_state(o[v]); continue; }
-                  if (code == "77c3") { const char* o[]={"Idle","Heating","Cooling","Defrost","Error"}; int v=raw; if(v>=0&&v<5) id(status3_flags).publish_state(o[v]); continue; }
-                  if (code == "77d2") { id(system_io).publish_state(raw==0?"Off":"On"); continue; }
-                  if (code == "65d0") { id(digital_out).publish_state(raw==0?"Off":"On"); continue; }
-                  if (code == "f9f2") { const char* o[]={"HP only","Boiler only","Hybrid"}; int v=raw; if(v>=0&&v<3) id(bivalent_flags).publish_state(o[v]); continue; }
-                  if (code == "7e2c") { const char* o[]={"None","Warning","Lockout"}; int v=raw; if(v>=0&&v<3) id(lockout_code).publish_state(o[v]); continue; }
-                  if (code == "8439") { const char* o[]={"None","Warning","Fault"}; int v=raw; if(v>=0&&v<3) id(boiler_oem_faultcode).publish_state(o[v]); continue; }
-                  if (code == "4133") { const char* o[]={"None","Warning","Error"}; int v=raw; if(v>=0&&v<3) id(error_code).publish_state(o[v]); continue; }
+                  // status_5.workingMode - echte codes (0=Cooling,1=Heating,2=Defrosting,3=Pumpdown,255=Undefined)
+                  if (code == "6578") {
+                    int v = (int) raw;
+                    std::string s;
+                    switch (v) {
+                      case 0: s = "Cooling"; break;
+                      case 1: s = "Heating"; break;
+                      case 2: s = "Defrosting"; break;
+                      case 3: s = "Pumpdown"; break;
+                      case 255: s = "Undefined"; break;
+                      default: s = "Unknown (" + std::to_string(v) + ")"; break;
+                    }
+                    id(working_mode).publish_state(s);
+                    continue;
+                  }
+
+                  // status_0.heatdemand_status - codetabel via globale map
+                  if (code == "7e51") {
+                    int v = (int) raw;
+                    auto &mm = id(heatdemand_status_map);
+                    auto it2 = mm.find(v);
+                    id(heatdemand_status).publish_state(it2 != mm.end() ? it2->second : ("Unknown (" + std::to_string(v) + ")"));
+                    continue;
+                  }
+
+                  // status_0.lockout_code - codetabel via globale map
+                  if (code == "7e2c") {
+                    int v = (int) raw;
+                    auto &mm = id(lockout_code_map);
+                    auto it2 = mm.find(v);
+                    id(lockout_code).publish_state(it2 != mm.end() ? it2->second : ("Unknown (" + std::to_string(v) + ")"));
+                    continue;
+                  }
+
+                  // status_9.errorCode - codetabel via globale map
+                  if (code == "4133") {
+                    int v = (int) raw;
+                    auto &mm = id(error_code_map);
+                    auto it2 = mm.find(v);
+                    id(error_code).publish_state(it2 != mm.end() ? it2->second : ("Unknown (" + std::to_string(v) + ")"));
+                    continue;
+                  }
+
+                  // boiler_control.boiler_control_flags - bitmasker, toon actieve vlaggen
+                  if (code == "b28c") {
+                    uint32_t v = (uint32_t) raw;
+                    static const char* bitnames[] = {"bBoilerOvertemperatureShutdown", "bBoilerNoReponse", "bLowLoadFlameOn", "bLowLoadFlameOnPrev", "bTemperatureBlankingActive"};
+                    std::string s;
+                    for (int b = 0; b < 5; b++) { if (v & (1u << b)) { if (!s.empty()) s += ", "; s += bitnames[b]; } }
+                    id(boiler_control_flags).publish_state(s.empty() ? "None" : s);
+                    continue;
+                  }
+
+                  // status_3.Flags - bitmasker, toon actieve vlaggen
+                  if (code == "77c3") {
+                    uint32_t v = (uint32_t) raw;
+                    static const char* bitnames[] = {"bLowLoadEnable", "bControlSupplyTemperature", "bProgressiveTempRequest", "bSilentModeActive", "bHeatpumpForceMaxPower", "bHeatpumpRegulateMaxPower", "bHeatWasAtMinimumFreq", "bCompressorWasOn"};
+                    std::string s;
+                    for (int b = 0; b < 8; b++) { if (v & (1u << b)) { if (!s.empty()) s += ", "; s += bitnames[b]; } }
+                    id(status3_flags).publish_state(s.empty() ? "None" : s);
+                    continue;
+                  }
+
+                  // status_3.SystemIo - bitmasker, toon actieve vlaggen
+                  if (code == "77d2") {
+                    uint32_t v = (uint32_t) raw;
+                    static const char* bitnames[] = {"dhwPumpOn", "chPumpOn", "pressureDetected", "systemFlowDetected", "dhwFlowDetected", "compressorRunning", "switched_on", "boiler_opentherm_connected", "boiled_requested", "thermostat_ot1_opentherm_connected", "thermostat_ot1_shortcircuit", "thermostat_ot2_opentherm_connected", "thermostat_ot2_shortcircuit", "commissioning", "gateway_connected"};
+                    std::string s;
+                    for (int b = 0; b < 15; b++) { if (v & (1u << b)) { if (!s.empty()) s += ", "; s += bitnames[b]; } }
+                    id(system_io).publish_state(s.empty() ? "None" : s);
+                    continue;
+                  }
+
+                  // status_5.digitalOut - bitmasker, toon actieve vlaggen
+                  if (code == "65d0") {
+                    uint32_t v = (uint32_t) raw;
+                    static const char* bitnames[] = {"compressor", "waterpump", "fourWayValve", "fanMotor", "antifreezeHeatingStrip", "crankAntifreezeHeatingStrip", "sprayValve", "auxiliaryElectricHeater", "dhwPump", "threewayValve"};
+                    std::string s;
+                    for (int b = 0; b < 10; b++) { if (v & (1u << b)) { if (!s.empty()) s += ", "; s += bitnames[b]; } }
+                    id(digital_out).publish_state(s.empty() ? "None" : s);
+                    continue;
+                  }
+
+                  // bivalent_service.flags - bitmasker, toon actieve vlaggen
+                  if (code == "f9f2") {
+                    uint32_t v = (uint32_t) raw;
+                    static const char* bitnames[] = {"HeatpumpNotAllowed", "HPFailedBackupActive", "BoilerNeeded", "HPCopEfficiencyOkay", "InitialDelayDone", "bStartWithBoilerImmediatly", "bBackupReqPrev", "bHeatpumpRequested", "bBoilerRequested", "bBoilerActualState", "bBoilerOpenLoopControl", "bBoilerFlameDetected", "bBoilerFlameDurShort", "bLowLoadDetected", "bDefrostActive", "bBlockHpClockProgram"};
+                    std::string s;
+                    for (int b = 0; b < 16; b++) { if (v & (1u << b)) { if (!s.empty()) s += ", "; s += bitnames[b]; } }
+                    id(bivalent_flags).publish_state(s.empty() ? "None" : s);
+                    continue;
+                  }
                 }
 
                 // GENERIEKE SENSOREN
@@ -347,6 +543,16 @@ sensor:
     accuracy_decimals: 0
 
   - platform: template
+    name: "Xtend Boiler Flame State (raw)"
+    id: boiler_flame_state_raw
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Xtend Boiler OEM Fault Code (raw)"
+    id: boiler_oem_faultcode_raw
+    accuracy_decimals: 0
+
+  - platform: template
     name: "Xtend Exhaust Pressure"
     id: exhaust_pressure
     unit_of_measurement: "bar"
@@ -542,65 +748,53 @@ select:
   - platform: template
     name: "Xtend Working Mode"
     id: working_mode
-    options: ["Idle", "Heating", "Cooling", "Defrost"]
+    options: ["Cooling", "Heating", "Defrosting", "Pumpdown", "Undefined"]
     optimistic: true
 
   - platform: template
     name: "Xtend Heat Demand Status"
     id: heatdemand_status
-    options: ["No demand", "Heating", "DHW", "Cooling"]
-    optimistic: true
-
-  - platform: template
-    name: "Xtend Boiler Flame State"
-    id: boiler_flame_state
-    options: ["Off", "Ignition", "Burning"]
+    options: ["sensortest", "commissioning", "crankheating", "service", "dhw", "dhw_int", "boiler_int", "boiler_ext", "postrun_boiler", "ch", "ch_wait", "defrosting", "opentherm", "heatup", "frost", "starting_ch", "postrun_ch", "standby", "off", "ch_rf", "dhw_hreco", "starting_cooling", "cooling", "cooling_wait", "postrun_cooling"]
     optimistic: true
 
   - platform: template
     name: "Xtend Boiler Control Flags"
     id: boiler_control_flags
-    options: ["None", "CH", "DHW", "CH + DHW"]
+    options: ["None", "bBoilerOvertemperatureShutdown", "bBoilerNoReponse", "bLowLoadFlameOn", "bLowLoadFlameOnPrev", "bTemperatureBlankingActive"]
     optimistic: true
 
   - platform: template
     name: "Xtend Status Flags"
     id: status3_flags
-    options: ["Idle", "Heating", "Cooling", "Defrost", "Error"]
+    options: ["None", "bLowLoadEnable", "bControlSupplyTemperature", "bProgressiveTempRequest", "bSilentModeActive", "bHeatpumpForceMaxPower", "bHeatpumpRegulateMaxPower", "bHeatWasAtMinimumFreq", "bCompressorWasOn"]
     optimistic: true
 
   - platform: template
     name: "Xtend System IO"
     id: system_io
-    options: ["Off", "On"]
+    options: ["None", "dhwPumpOn", "chPumpOn", "pressureDetected", "systemFlowDetected", "dhwFlowDetected", "compressorRunning", "switched_on", "boiler_opentherm_connected", "boiled_requested", "thermostat_ot1_opentherm_connected", "thermostat_ot1_shortcircuit", "thermostat_ot2_opentherm_connected", "thermostat_ot2_shortcircuit", "commissioning", "gateway_connected"]
     optimistic: true
 
   - platform: template
     name: "Xtend Digital Out"
     id: digital_out
-    options: ["Off", "On"]
+    options: ["None", "compressor", "waterpump", "fourWayValve", "fanMotor", "antifreezeHeatingStrip", "crankAntifreezeHeatingStrip", "sprayValve", "auxiliaryElectricHeater", "dhwPump", "threewayValve"]
     optimistic: true
 
   - platform: template
     name: "Xtend Bivalent Flags"
     id: bivalent_flags
-    options: ["HP only", "Boiler only", "Hybrid"]
+    options: ["None", "HeatpumpNotAllowed", "HPFailedBackupActive", "BoilerNeeded", "HPCopEfficiencyOkay", "InitialDelayDone", "bStartWithBoilerImmediatly", "bBackupReqPrev", "bHeatpumpRequested", "bBoilerRequested", "bBoilerActualState", "bBoilerOpenLoopControl", "bBoilerFlameDetected", "bBoilerFlameDurShort", "bLowLoadDetected", "bDefrostActive", "bBlockHpClockProgram"]
     optimistic: true
 
   - platform: template
     name: "Xtend Lockout Code"
     id: lockout_code
-    options: ["None", "Warning", "Lockout"]
-    optimistic: true
-
-  - platform: template
-    name: "Xtend Boiler OEM Fault Code"
-    id: boiler_oem_faultcode
-    options: ["None", "Warning", "Fault"]
+    options: ["LOCKOUT_NO_ERROR", "LOCKOUT_CH_PUMP", "LOCKOUT_DHW_PUMP", "LOCKOUT_CONDENSOR_OVERHEAT", "LOCKOUT_ERROR_LOCKOUT_DEVICE", "LOCKOUT_DEFROST_WATER_TEMP_LOW", "LOCKOUT_HEATPUMP_TYPE_UNCONFIGURED", "LOCKOUT_BMM_ILLIGAL_SERIAL", "LOCKOUT_STORAGEHANDLER_SYNC", "LOCKOUT_FIRMWARE_COMPATIBILITY", "LOCKOUT_XTP_DEVICE_INTERNAL_FAULT", "LOCKOUT_XTP_DEVICE_CONFIG_FAULT", "LOCKOUT_XTP_COMMUNICATION_FAULT", "LOCKOUT_XTP_START_FAULT", "LOCKOUT_ERROR_UNKNOWN", "LOCKOUT_SENSOR_HP_RETURN", "LOCKOUT_SENSOR_HP_SUPPLY", "LOCKOUT_SENSOR_SYSTEM_SUPPLY", "LOCKOUT_SENSOR_OUTDOOR", "LOCKOUT_SENSOR_BOILER_RETURN", "LOCKOUT_SENSOR_BOILER_SUPPLY", "LOCKOUT_CODE_THERMOSTAT_HEATPUMP", "LOCKOUT_CODE_THERMOSTAT_BOILER", "LOCKOUT_BYPASS_MODE_ACTIVE"]
     optimistic: true
 
   - platform: template
     name: "Xtend Error Code"
     id: error_code
-    options: ["None", "Warning", "Error"]
+    options: ["HP_GEN_FAULT_NONE", "HP_GEN_FAULT_DEFROST_FAILED", "HP_GEN_FAULT_LOW_PRESSURE", "HP_GEN_FAULT_HIGH_PRESSURE", "HP_GEN_FAULT_COMPRESSOR_OUTSIDE_OP_RANGE", "HP_GEN_FAULT_EXHAUST_TEMP_TOO_HIGH", "HP_GEN_FAULT_CONDENSOR_TEMP_TOO_HIGH", "HP_GEN_FAULT_OUTDOORUNIT_SPECIFIC_AUTO_RESTART", "HP_GEN_FAULT_OUTDOORUNIT_SPECIFIC_LOCKED", "HP_GEN_FAULT_OUTDOORUNIT_CONTROL_GUARD", "HP_GEN_FAULT_WATER_FLOW_TOO_LOW", "HP_GEN_FAULT_WATER_FLOW_TOO_LOW_DEFROST", "HP_GEN_FAULT_CONDENSOR_GAS_TOO_LOW", "HP_GEN_FAULT_NO_TOUTDOOR_SENSOR", "HP_GEN_FAULT_PUMPDOWN_FAILED", "HP_GEN_FAULT_DSH_TOO_LOW", "HP_GEN_FAULT_SSH_TOO_LOW", "HP_GEN_FAULT_SSH_TOO_HIGH", "HP_GEN_FAULT_COOLING_MODE_TEMPS", "HP_GEN_FAULT_CONDENSOR_LIQUID_SENSOR", "HP_GEN_FAULT_XTP_DEVICE_WATER_INLET", "HP_GEN_FAULT_XTP_DEVICE_WATER_OUTLET", "HP_GEN_FAULT_XTP_DEVICE_REFRIGERANT_LIQUID", "HP_GEN_FAULT_XTP_DEVICE_REFRIGERANT_GAS", "AC_BUS_VOLTAGE_HIGH", "AC_BUS_VOLTAGE_LOW", "DC_BUS_OVERVOLTAGE", "COMPRESSOR_OVERCURRENT_HARDWARE", "COMPRESSOR_OVERCURRENT_FIRMWARE", "AC_INPUT_OVERCURRENT_HARDWARE", "AC_INPUT_OVERCURRENT_FIRMWARE", "COMPRESSOR_CURRENT_OVERLOAD", "PHASE_LOSS_LOSS_OF_SYNCHRONISM", "IPM_TEMP_PROTECTION", "OUTDOOR_DC_FAN_FAULT", "SUCTION_TEMP_SENSOR_ERROR", "ODU_DISCHARGE_TEMP_SENSOR_ERROR", "ODU_COIL_TEMP_SENSOR_ERROR", "AMBIENT_TEMP_SENSOR_ERROR", "DISCHARGE_TEMP_HIGH_ERROR", "CONDENSING_TEMP_HIGH_ERROR", "ODU_IDU_COMMUNICATION_ERROR", "DC_BUS_UNDERVOLTAGE", "NO_ERROR", "UNCONNECTED"]
     optimistic: true
