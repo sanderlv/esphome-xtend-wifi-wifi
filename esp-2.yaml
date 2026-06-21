@@ -1,19 +1,19 @@
 # ESP-2 voor de xTend
 
 substitutions:
-  esp_name: esp-2
+  esp_name: esp-1
   ssid: YOURSSID
-  password: YOURPASSWORD
+  password: YOUR PASSWORD
 
 esp32:
-  board: lolin_s3_mini # Change for your board
+  board: lolin_s3_mini
   framework:
     type: esp-idf
 
 wifi:
   ssid: $ssid
   password: $password
-  #use_address: 192.168.6.112
+  @use_address: 192.168.6.112
   ap:
     ssid: "${esp_name} FBHS"
     password: !secret Fallback_Hotspot
@@ -51,13 +51,28 @@ globals:
   - id: xtend_sensors
     type: std::map<std::string, std::tuple<sensor::Sensor *, float, bool>>
     restore_value: false
-  - id: heatdemand_status_map
+  - id: error_code_map
+    type: std::map<int, std::string>
+    restore_value: false
+  - id: working_mode_map
+    type: std::map<int, std::string>
+    restore_value: false
+  - id: hp_mode_map
+    type: std::map<int, std::string>
+    restore_value: false
+  - id: task_status_map
+    type: std::map<int, std::string>
+    restore_value: false
+  - id: notification_code_map
     type: std::map<int, std::string>
     restore_value: false
   - id: lockout_code_map
     type: std::map<int, std::string>
     restore_value: false
-  - id: error_code_map
+  - id: heatdemand_status_map
+    type: std::map<int, std::string>
+    restore_value: false
+  - id: burner_status_map
     type: std::map<int, std::string>
     restore_value: false
 
@@ -70,385 +85,478 @@ esphome:
     then:
       - lambda: |-
           auto &m = id(xtend_sensors);
-          m["79b3"] = std::make_tuple(id(roomtemp_1), 0.01f, true);
-          m["7921"] = std::make_tuple(id(roomtemp_set_1), 0.01f, true);
-          m["7940"] = std::make_tuple(id(notification_code), 1.0f, false);
-          m["50f2"] = std::make_tuple(id(power_electric), 0.001f, false);
-          m["503e"] = std::make_tuple(id(hp_power_thermal), 0.001f, false);
-          m["5041"] = std::make_tuple(id(current_cop), 0.1f, false);
-          m["5088"] = std::make_tuple(id(boiler_power_thermal), 0.001f, false);
-          m["5077"] = std::make_tuple(id(power_thermal), 0.001f, false);
-          m["50ae"] = std::make_tuple(id(energy_thermal_heating_prevday), 0.1f, false);
-          m["50f7"] = std::make_tuple(id(cop_heating_prevday), 0.1f, false);
-          m["5099"] = std::make_tuple(id(energy_electric_heating_prevday), 0.1f, false);
-          m["506a"] = std::make_tuple(id(energy_thermal_boiler_prevday), 0.1f, false);
-          m["63f0"] = std::make_tuple(id(thermal_energy_heating_total), 1.0f, false);
-          m["63b3"] = std::make_tuple(id(electric_energy_heating_total), 1.0f, false);
-          m["63df"] = std::make_tuple(id(thermal_energy_boiler_total), 1.0f, false);
-          m["6a8e"] = std::make_tuple(id(start_heating_counter), 1.0f, false);
-          m["6ac5"] = std::make_tuple(id(operation_heating_hours), 1.0f, false);
-          m["71a7"] = std::make_tuple(id(poweron_hours), 1.0f, false);
-          m["7160"] = std::make_tuple(id(poweron_number), 1.0f, false);
-          m["6a53"] = std::make_tuple(id(start_defrost_counter), 1.0f, false);
-          m["8e00"] = std::make_tuple(id(boiler_burner_starts), 1.0f, false);
-          m["8ef9"] = std::make_tuple(id(boiler_ch_hours), 1.0f, false);
-          m["8e37"] = std::make_tuple(id(boiler_dhw_hours), 1.0f, false);
-          m["8e18"] = std::make_tuple(id(boiler_flame_loss), 1.0f, false);
-          m["65b0"] = std::make_tuple(id(exhaust_pressure), 0.01f, false);
-          m["6579"] = std::make_tuple(id(suction_pressure), 0.01f, false);
-          m["7ed3"] = std::make_tuple(id(water_pressure), 0.01f, true);
-          m["629c"] = std::make_tuple(id(flow_system), 0.01f, false);
-          m["6280"] = std::make_tuple(id(temp_hp_return), 0.01f, true);
-          m["62e7"] = std::make_tuple(id(temp_hp_supply), 0.01f, true);
-          m["7767"] = std::make_tuple(id(temp_requested), 0.01f, true);
-          m["65d9"] = std::make_tuple(id(temp_exhaust), 0.01f, true);
-          m["6505"] = std::make_tuple(id(temp_suction), 0.01f, true);
-          m["6c66"] = std::make_tuple(id(eev_steps), 1.0f, false);
-          m["62d1"] = std::make_tuple(id(temp_outdoor), 0.01f, true);
-          m["84d1"] = std::make_tuple(id(boiler_modulation_level), 0.01f, false);
-          m["6c53"] = std::make_tuple(id(temp_subcooling), 0.01f, true);
-          m["6c26"] = std::make_tuple(id(temp_condensor_gas), 0.01f, true);
-          m["6ceb"] = std::make_tuple(id(temp_condensor_liquid), 0.01f, true);
-          m["7ee6"] = std::make_tuple(id(temp_supply), 0.01f, true);
-          m["7e81"] = std::make_tuple(id(temp_return), 0.01f, true);
-          m["7e31"] = std::make_tuple(id(temp_setpoint), 0.01f, true);
-          // niet gedocumenteerd in parse-message.js -> ruwe codes, geen mapping bekend
-          m["b2bc"] = std::make_tuple(id(boiler_flame_state_raw), 1.0f, false);
-          m["8439"] = std::make_tuple(id(boiler_oem_faultcode_raw), 1.0f, false);
+                    m["503e"] = std::make_tuple(id(hp_power_thermal), 0.001f, false);
+                    m["5041"] = std::make_tuple(id(current_cop), 0.1f, false);
+                    m["506a"] = std::make_tuple(id(energy_thermal_boiler_prevday), 0.1f, false);
+                    m["5077"] = std::make_tuple(id(power_thermal), 0.001f, false);
+                    m["5088"] = std::make_tuple(id(boiler_power_thermal), 0.001f, false);
+                    m["5099"] = std::make_tuple(id(energy_electric_heating_prevday), 0.1f, false);
+                    m["50ae"] = std::make_tuple(id(energy_thermal_heating_prevday), 0.1f, false);
+                    m["50f2"] = std::make_tuple(id(power_electric), 0.001f, false);
+                    m["50f7"] = std::make_tuple(id(cop_heating_prevday), 0.1f, false);
+                    m["6280"] = std::make_tuple(id(temp_hp_return), 0.01f, true);
+                    m["629c"] = std::make_tuple(id(flow_system), 0.01f, false);
+                    m["62d1"] = std::make_tuple(id(temp_outdoor), 0.01f, true);
+                    m["62e7"] = std::make_tuple(id(temp_hp_supply), 0.01f, true);
+                    m["63b3"] = std::make_tuple(id(electric_energy_heating_total), 1.0f, false);
+                    m["63df"] = std::make_tuple(id(thermal_energy_boiler_total), 1.0f, false);
+                    m["63f0"] = std::make_tuple(id(thermal_energy_heating_total), 1.0f, false);
+                    m["6505"] = std::make_tuple(id(temp_suction), 0.01f, true);
+                    m["6579"] = std::make_tuple(id(suction_pressure), 0.01f, false);
+                    m["65a7"] = std::make_tuple(id(freq_actual), 0.01f, false);
+                    m["65b0"] = std::make_tuple(id(exhaust_pressure), 0.01f, false);
+                    m["65c1"] = std::make_tuple(id(temp_coil), 0.01f, true);
+                    m["65d9"] = std::make_tuple(id(temp_exhaust), 0.01f, true);
+                    m["6a53"] = std::make_tuple(id(start_defrost_counter), 1.0f, false);
+                    m["6a8e"] = std::make_tuple(id(start_heating_counter), 1.0f, false);
+                    m["6ac5"] = std::make_tuple(id(operation_heating_hours), 1.0f, false);
+                    m["6c26"] = std::make_tuple(id(temp_condensor_gas), 0.01f, true);
+                    m["6c33"] = std::make_tuple(id(exhaust_overheat), 0.01f, true);
+                    m["6c53"] = std::make_tuple(id(temp_subcooling), 0.01f, true);
+                    m["6c66"] = std::make_tuple(id(eev_steps), 1.0f, false);
+                    m["6c8a"] = std::make_tuple(id(fan1_speed), 1.0f, false);
+                    m["6ceb"] = std::make_tuple(id(temp_condensor_liquid), 0.01f, true);
+                    m["6cfb"] = std::make_tuple(id(suction_overheat), 0.01f, true);
+                    m["7160"] = std::make_tuple(id(poweron_number), 1.0f, false);
+                    m["71a7"] = std::make_tuple(id(poweron_hours), 1.0f, false);
+                    m["7767"] = std::make_tuple(id(temp_requested), 0.01f, true);
+                    m["7921"] = std::make_tuple(id(roomtemp_set_1), 0.01f, true);
+                    m["79b3"] = std::make_tuple(id(roomtemp_1), 0.01f, true);
+                    m["7e31"] = std::make_tuple(id(temp_setpoint), 0.01f, true);
+                    m["7e81"] = std::make_tuple(id(temp_return), 0.01f, true);
+                    m["7ed3"] = std::make_tuple(id(water_pressure), 0.01f, true);
+                    m["7ee6"] = std::make_tuple(id(temp_supply), 0.01f, true);
+                    m["8439"] = std::make_tuple(id(boiler_oem_faultcode_raw), 1.0f, false);
+                    m["84d1"] = std::make_tuple(id(boiler_modulation_level), 0.01f, false);
+                    m["8e00"] = std::make_tuple(id(boiler_burner_starts), 1.0f, false);
+                    m["8e18"] = std::make_tuple(id(boiler_flame_loss), 1.0f, false);
+                    m["8e37"] = std::make_tuple(id(boiler_dhw_hours), 1.0f, false);
+                    m["8ef9"] = std::make_tuple(id(boiler_ch_hours), 1.0f, false);
+                    m["b2bc"] = std::make_tuple(id(boiler_flame_state_raw), 1.0f, false);
 
-          // status_0.heatdemand_status (key 7e51) - codes uit parse-message.js
-          auto &hd = id(heatdemand_status_map);
-          hd[85]  = "sensortest";
-          hd[86]  = "commissioning";
-          hd[87]  = "crankheating";
-          hd[170] = "service";
-          hd[204] = "dhw";
-          hd[51]  = "dhw_int";
-          hd[240] = "boiler_int";
-          hd[15]  = "boiler_ext";
-          hd[153] = "postrun_boiler";
-          hd[102] = "ch";
-          hd[103] = "ch_wait";
-          hd[104] = "defrosting";
-          hd[0]   = "opentherm";
-          hd[255] = "heatup";
-          hd[24]  = "frost";
-          hd[230] = "starting_ch";
-          hd[231] = "postrun_ch";
-          hd[126] = "standby";
-          hd[127] = "off";
-          hd[37]  = "ch_rf";
-          hd[205] = "dhw_hreco";
-          hd[117] = "starting_cooling";
-          hd[118] = "cooling";
-          hd[119] = "cooling_wait";
-          hd[189] = "postrun_cooling";
+                    // status_9.errorCode (4133)
+                    auto &ec = id(error_code_map);
+                    ec[0] = "No fault";
+                    ec[1] = "Defrost failed";
+                    ec[10] = "Water flow too low";
+                    ec[11] = "Water flow too low (defrost)";
+                    ec[12] = "Condensor gas temperature too low";
+                    ec[128] = "AC bus voltage high";
+                    ec[129] = "AC bus voltage low";
+                    ec[13] = "Outdoor temperature sensor missing";
+                    ec[130] = "DC bus overvoltage";
+                    ec[131] = "Compressor overcurrent (hardware)";
+                    ec[132] = "Compressor overcurrent (firmware)";
+                    ec[133] = "AC input overcurrent (hardware)";
+                    ec[134] = "AC input overcurrent (firmware)";
+                    ec[135] = "Compressor current overload";
+                    ec[136] = "Phase loss / loss of synchronism";
+                    ec[137] = "IPM temperature protection";
+                    ec[138] = "Outdoor DC fan fault";
+                    ec[139] = "Suction temperature sensor error";
+                    ec[14] = "Pumpdown failed";
+                    ec[140] = "Outdoor unit discharge sensor error";
+                    ec[141] = "Outdoor unit coil sensor error";
+                    ec[142] = "Ambient temperature sensor error";
+                    ec[143] = "Discharge temperature too high";
+                    ec[144] = "Condensing temperature too high";
+                    ec[145] = "Outdoor/indoor unit communication error";
+                    ec[146] = "DC bus undervoltage";
+                    ec[15] = "Discharge superheat too low";
+                    ec[16] = "Suction superheat too low";
+                    ec[17] = "Suction superheat too high";
+                    ec[18] = "Cooling mode temperatures fault";
+                    ec[19] = "Condensor liquid sensor fault";
+                    ec[2] = "Low pressure";
+                    ec[20] = "XTP device water inlet fault";
+                    ec[21] = "XTP device water outlet fault";
+                    ec[22] = "XTP device refrigerant liquid fault";
+                    ec[23] = "XTP device refrigerant gas fault";
+                    ec[255] = "No error";
+                    ec[3] = "High pressure";
+                    ec[4] = "Compressor outside operating range";
+                    ec[5] = "Exhaust temperature too high";
+                    ec[6] = "Condensor temperature too high";
+                    ec[65535] = "Not connected";
+                    ec[7] = "Outdoor unit fault (auto-restart)";
+                    ec[8] = "Outdoor unit fault (locked)";
+                    ec[9] = "Outdoor unit control guard";
 
-          // status_0.lockout_code (key 7e2c) - codes uit parse-message.js
-          auto &lc = id(lockout_code_map);
-          lc[1]   = "LOCKOUT_CH_PUMP";
-          lc[2]   = "LOCKOUT_DHW_PUMP";
-          lc[3]   = "LOCKOUT_CONDENSOR_OVERHEAT";
-          lc[9]   = "LOCKOUT_ERROR_LOCKOUT_DEVICE";
-          lc[10]  = "LOCKOUT_DEFROST_WATER_TEMP_LOW";
-          lc[18]  = "LOCKOUT_HEATPUMP_TYPE_UNCONFIGURED";
-          lc[19]  = "LOCKOUT_BMM_ILLIGAL_SERIAL";
-          lc[20]  = "LOCKOUT_STORAGEHANDLER_SYNC";
-          lc[22]  = "LOCKOUT_FIRMWARE_COMPATIBILITY";
-          lc[23]  = "LOCKOUT_XTP_DEVICE_INTERNAL_FAULT";
-          lc[24]  = "LOCKOUT_XTP_DEVICE_CONFIG_FAULT";
-          lc[25]  = "LOCKOUT_XTP_COMMUNICATION_FAULT";
-          lc[26]  = "LOCKOUT_XTP_START_FAULT";
-          lc[31]  = "LOCKOUT_ERROR_UNKNOWN";
-          lc[37]  = "LOCKOUT_SENSOR_HP_RETURN";
-          lc[38]  = "LOCKOUT_SENSOR_HP_SUPPLY";
-          lc[39]  = "LOCKOUT_SENSOR_SYSTEM_SUPPLY";
-          lc[40]  = "LOCKOUT_SENSOR_OUTDOOR";
-          lc[46]  = "LOCKOUT_SENSOR_BOILER_RETURN";
-          lc[47]  = "LOCKOUT_SENSOR_BOILER_SUPPLY";
-          lc[50]  = "LOCKOUT_CODE_THERMOSTAT_HEATPUMP";
-          lc[51]  = "LOCKOUT_CODE_THERMOSTAT_BOILER";
-          lc[254] = "LOCKOUT_BYPASS_MODE_ACTIVE";
-          lc[255] = "LOCKOUT_NO_ERROR";
+                    // status_5.workingMode (6578)
+                    auto &wmm = id(working_mode_map);
+                    wmm[0] = "Cooling";
+                    wmm[1] = "Heating";
+                    wmm[2] = "Defrosting";
+                    wmm[255] = "Undefined";
+                    wmm[3] = "Pumpdown";
 
-          // status_9.errorCode (key 4133) - codes uit parse-message.js
-          auto &ec = id(error_code_map);
-          ec[0]   = "HP_GEN_FAULT_NONE";
-          ec[1]   = "HP_GEN_FAULT_DEFROST_FAILED";
-          ec[2]   = "HP_GEN_FAULT_LOW_PRESSURE";
-          ec[3]   = "HP_GEN_FAULT_HIGH_PRESSURE";
-          ec[4]   = "HP_GEN_FAULT_COMPRESSOR_OUTSIDE_OP_RANGE";
-          ec[5]   = "HP_GEN_FAULT_EXHAUST_TEMP_TOO_HIGH";
-          ec[6]   = "HP_GEN_FAULT_CONDENSOR_TEMP_TOO_HIGH";
-          ec[7]   = "HP_GEN_FAULT_OUTDOORUNIT_SPECIFIC_AUTO_RESTART";
-          ec[8]   = "HP_GEN_FAULT_OUTDOORUNIT_SPECIFIC_LOCKED";
-          ec[9]   = "HP_GEN_FAULT_OUTDOORUNIT_CONTROL_GUARD";
-          ec[10]  = "HP_GEN_FAULT_WATER_FLOW_TOO_LOW";
-          ec[11]  = "HP_GEN_FAULT_WATER_FLOW_TOO_LOW_DEFROST";
-          ec[12]  = "HP_GEN_FAULT_CONDENSOR_GAS_TOO_LOW";
-          ec[13]  = "HP_GEN_FAULT_NO_TOUTDOOR_SENSOR";
-          ec[14]  = "HP_GEN_FAULT_PUMPDOWN_FAILED";
-          ec[15]  = "HP_GEN_FAULT_DSH_TOO_LOW";
-          ec[16]  = "HP_GEN_FAULT_SSH_TOO_LOW";
-          ec[17]  = "HP_GEN_FAULT_SSH_TOO_HIGH";
-          ec[18]  = "HP_GEN_FAULT_COOLING_MODE_TEMPS";
-          ec[19]  = "HP_GEN_FAULT_CONDENSOR_LIQUID_SENSOR";
-          ec[20]  = "HP_GEN_FAULT_XTP_DEVICE_WATER_INLET";
-          ec[21]  = "HP_GEN_FAULT_XTP_DEVICE_WATER_OUTLET";
-          ec[22]  = "HP_GEN_FAULT_XTP_DEVICE_REFRIGERANT_LIQUID";
-          ec[23]  = "HP_GEN_FAULT_XTP_DEVICE_REFRIGERANT_GAS";
-          ec[128] = "AC_BUS_VOLTAGE_HIGH";
-          ec[129] = "AC_BUS_VOLTAGE_LOW";
-          ec[130] = "DC_BUS_OVERVOLTAGE";
-          ec[131] = "COMPRESSOR_OVERCURRENT_HARDWARE";
-          ec[132] = "COMPRESSOR_OVERCURRENT_FIRMWARE";
-          ec[133] = "AC_INPUT_OVERCURRENT_HARDWARE";
-          ec[134] = "AC_INPUT_OVERCURRENT_FIRMWARE";
-          ec[135] = "COMPRESSOR_CURRENT_OVERLOAD";
-          ec[136] = "PHASE_LOSS_LOSS_OF_SYNCHRONISM";
-          ec[137] = "IPM_TEMP_PROTECTION";
-          ec[138] = "OUTDOOR_DC_FAN_FAULT";
-          ec[139] = "SUCTION_TEMP_SENSOR_ERROR";
-          ec[140] = "ODU_DISCHARGE_TEMP_SENSOR_ERROR";
-          ec[141] = "ODU_COIL_TEMP_SENSOR_ERROR";
-          ec[142] = "AMBIENT_TEMP_SENSOR_ERROR";
-          ec[143] = "DISCHARGE_TEMP_HIGH_ERROR";
-          ec[144] = "CONDENSING_TEMP_HIGH_ERROR";
-          ec[145] = "ODU_IDU_COMMUNICATION_ERROR";
-          ec[146] = "DC_BUS_UNDERVOLTAGE";
-          ec[255] = "NO_ERROR";
-          ec[65535] = "UNCONNECTED";
+                    // status_3.RequestedHeatpumpMode (777d)
+                    auto &hpm = id(hp_mode_map);
+                    hpm[0] = "Domestic hot water";
+                    hpm[1] = "Heating";
+                    hpm[2] = "Cooling";
+                    hpm[253] = "Pumpdown";
+                    hpm[254] = "Off";
+                    hpm[255] = "Undefined";
+
+                    // status_3.SystemStatus (77dd)
+                    auto &tsm = id(task_status_map);
+                    tsm[0] = "Monitor lockout";
+                    tsm[1] = "Pump venting";
+                    tsm[12] = "Antifreeze protection";
+                    tsm[13] = "Pump maintenance";
+                    tsm[14] = "Idle";
+                    tsm[2] = "Service";
+                    tsm[255] = "No task";
+                    tsm[3] = "Defrost";
+                    tsm[4] = "Domestic hot water";
+                    tsm[5] = "Room heating (comfort)";
+                    tsm[6] = "Room heating (eco)";
+                    tsm[7] = "Room cooling";
+                    tsm[8] = "DHW heat exchanger";
+                    tsm[9] = "Floor heating protocol";
+
+                    // status_1.notification_code (7940)
+                    auto &ncm = id(notification_code_map);
+                    ncm[0] = "Parameter out of bounds";
+                    ncm[1] = "Low pressure";
+                    ncm[10] = "Heat pump remote off";
+                    ncm[11] = "Heat pump failed";
+                    ncm[12] = "kWh meter";
+                    ncm[13] = "Condensor overheat";
+                    ncm[14] = "Room thermostat failed";
+                    ncm[15] = "Crankcase heater";
+                    ncm[16] = "Water temperature sensors";
+                    ncm[18] = "EEPROM broken";
+                    ncm[19] = "BMM broken";
+                    ncm[2] = "No pressure";
+                    ncm[20] = "No flow in DHW circuit";
+                    ncm[21] = "No flow in CH circuit";
+                    ncm[22] = "Flow control disabled";
+                    ncm[23] = "Commissioning low flow";
+                    ncm[255] = "No warning";
+                    ncm[26] = "RTC time invalid";
+                    ncm[27] = "RTC clock";
+                    ncm[31] = "Unknown warning";
+                    ncm[32] = "Defrost timeout";
+                    ncm[33] = "Defrost monitor timeout";
+                    ncm[37] = "HP return sensor";
+                    ncm[38] = "HP supply sensor";
+                    ncm[39] = "System supply sensor";
+                    ncm[40] = "Outdoor sensor";
+                    ncm[41] = "Condensor refrigerant liquid sensor";
+                    ncm[42] = "Condensor refrigerant gas sensor";
+                    ncm[46] = "Boiler return sensor";
+                    ncm[47] = "Boiler supply sensor";
+                    ncm[48] = "Boiler flow too high";
+                    ncm[49] = "Boiler flow too low";
+                    ncm[50] = "Boiler flow reversed";
+                    ncm[51] = "Boiler fault";
+                    ncm[52] = "Boiler OpenTherm fault";
+                    ncm[53] = "Boiler setting at maximum";
+                    ncm[54] = "Boiler: no CH response";
+                    ncm[60] = "Thermostat version";
+                    ncm[8] = "XTP fault, heat pump off";
+                    ncm[9] = "Heat pump phase selection";
+
+                    // status_0.lockout_code (7e2c)
+                    auto &lc = id(lockout_code_map);
+                    lc[1] = "CH pump";
+                    lc[10] = "Defrost water temperature low";
+                    lc[18] = "Heat pump type unconfigured";
+                    lc[19] = "BMM illegal serial number";
+                    lc[2] = "DHW pump";
+                    lc[20] = "Storage handler sync";
+                    lc[22] = "Firmware compatibility";
+                    lc[23] = "XTP device internal fault";
+                    lc[24] = "XTP device configuration fault";
+                    lc[25] = "XTP communication fault";
+                    lc[254] = "Bypass mode active";
+                    lc[255] = "No error";
+                    lc[26] = "XTP start fault";
+                    lc[3] = "Condensor overheat";
+                    lc[31] = "Unknown error";
+                    lc[37] = "HP return sensor";
+                    lc[38] = "HP supply sensor";
+                    lc[39] = "System supply sensor";
+                    lc[40] = "Outdoor sensor";
+                    lc[46] = "Boiler return sensor";
+                    lc[47] = "Boiler supply sensor";
+                    lc[50] = "Thermostat (heat pump)";
+                    lc[51] = "Thermostat (boiler)";
+                    lc[9] = "Lockout device error";
+
+                    // status_0.heatdemand_status (7e51)
+                    auto &hd = id(heatdemand_status_map);
+                    hd[0] = "OpenTherm";
+                    hd[102] = "Central heating";
+                    hd[103] = "Central heating (waiting)";
+                    hd[104] = "Defrosting";
+                    hd[117] = "Starting cooling";
+                    hd[118] = "Cooling";
+                    hd[119] = "Cooling (waiting)";
+                    hd[126] = "Standby";
+                    hd[127] = "Off";
+                    hd[15] = "Boiler (external)";
+                    hd[153] = "Postrun boiler";
+                    hd[170] = "Service";
+                    hd[189] = "Postrun cooling";
+                    hd[204] = "Domestic hot water";
+                    hd[205] = "DHW heat recovery";
+                    hd[230] = "Starting central heating";
+                    hd[231] = "Postrun central heating";
+                    hd[24] = "Frost protection";
+                    hd[240] = "Boiler (internal)";
+                    hd[255] = "Heat-up";
+                    hd[37] = "Central heating (RF thermostat)";
+                    hd[51] = "DHW (internal)";
+                    hd[85] = "Sensor test";
+                    hd[86] = "Commissioning";
+                    hd[87] = "Crankcase heating";
+
+                    // status_0.burner_status (7e7a)
+                    auto &bsm = id(burner_status_map);
+                    bsm[0] = "Startup";
+                    bsm[1] = "Interpurge";
+                    bsm[128] = "Lockout";
+                    bsm[16] = "Waiting";
+                    bsm[2] = "Postpurge";
+                    bsm[32] = "Running";
+                    bsm[4] = "Prepurge";
+                    bsm[64] = "Rest";
+                    bsm[8] = "Ignition";
 
 interval:
   - interval: 50ms
     then:
       - lambda: |-
           while (id(uart_bus).available()) {
-            uint8_t c;
-            id(uart_bus).read_byte(&c);
-            if (c == '\n') {
-              json::parse_json(id(line_buffer), [](JsonObject root) -> bool {
+                      uint8_t c;
+                      id(uart_bus).read_byte(&c);
+                      if (c == '\n') {
+                        json::parse_json(id(line_buffer), [](JsonObject root) -> bool {
 
-                // FIX 1 — modern ArduinoJson check
-                if (!root["stats"].is<JsonObject>()) return false;
-                JsonObject stats = root["stats"].as<JsonObject>();
+                          // FIX 1 — modern ArduinoJson check
+                          if (!root["stats"].is<JsonObject>()) return false;
+                          JsonObject stats = root["stats"].as<JsonObject>();
 
-                // SELECT MAPPINGS
-                for (JsonPair kv : stats) {
-                  std::string code = kv.key().c_str();
-                  float raw = kv.value().as<float>();
+                          // DEBUG: toon alle ontvangen codes 1x per regel (verwijder als niet meer nodig)
+                          std::string seen_codes;
+                          for (JsonPair kv : stats) { seen_codes += kv.key().c_str(); seen_codes += " "; }
+                          ESP_LOGD("xtend_debug", "Ontvangen codes (%d): %s", (int) stats.size(), seen_codes.c_str());
 
-                  // status_5.workingMode - echte codes (0=Cooling,1=Heating,2=Defrosting,3=Pumpdown,255=Undefined)
-                  if (code == "6578") {
-                    int v = (int) raw;
-                    std::string s;
-                    switch (v) {
-                      case 0: s = "Cooling"; break;
-                      case 1: s = "Heating"; break;
-                      case 2: s = "Defrosting"; break;
-                      case 3: s = "Pumpdown"; break;
-                      case 255: s = "Undefined"; break;
-                      default: s = "Unknown (" + std::to_string(v) + ")"; break;
+                          // EEN doorloop: per key eerst enum/bitmasker-checks, anders generieke sensor
+                          for (JsonPair kv : stats) {
+                            std::string code = kv.key().c_str();
+                            float raw = kv.value().as<float>();
+
+                            // status_9.errorCode (4133) -> error_code_map
+                            if (code == "4133") {
+                              int v = (int) raw;
+                              auto &mm = id(error_code_map);
+                              auto it2 = mm.find(v);
+                              id(error_code).publish_state(it2 != mm.end() ? it2->second : ("Unknown (" + std::to_string(v) + ")"));
+                              continue;
+                            }
+                            // status_5.workingMode (6578) -> working_mode_map
+                            if (code == "6578") {
+                              int v = (int) raw;
+                              auto &mm = id(working_mode_map);
+                              auto it2 = mm.find(v);
+                              id(working_mode).publish_state(it2 != mm.end() ? it2->second : ("Unknown (" + std::to_string(v) + ")"));
+                              continue;
+                            }
+                            // status_3.RequestedHeatpumpMode (777d) -> hp_mode_map
+                            if (code == "777d") {
+                              int v = (int) raw;
+                              auto &mm = id(hp_mode_map);
+                              auto it2 = mm.find(v);
+                              id(requested_heatpump_mode).publish_state(it2 != mm.end() ? it2->second : ("Unknown (" + std::to_string(v) + ")"));
+                              continue;
+                            }
+                            // status_3.SystemStatus (77dd) -> task_status_map
+                            if (code == "77dd") {
+                              int v = (int) raw;
+                              auto &mm = id(task_status_map);
+                              auto it2 = mm.find(v);
+                              id(system_status).publish_state(it2 != mm.end() ? it2->second : ("Unknown (" + std::to_string(v) + ")"));
+                              continue;
+                            }
+                            // status_1.notification_code (7940) -> notification_code_map
+                            if (code == "7940") {
+                              int v = (int) raw;
+                              auto &mm = id(notification_code_map);
+                              auto it2 = mm.find(v);
+                              id(notification_code).publish_state(it2 != mm.end() ? it2->second : ("Unknown (" + std::to_string(v) + ")"));
+                              continue;
+                            }
+                            // status_0.lockout_code (7e2c) -> lockout_code_map
+                            if (code == "7e2c") {
+                              int v = (int) raw;
+                              auto &mm = id(lockout_code_map);
+                              auto it2 = mm.find(v);
+                              id(lockout_code).publish_state(it2 != mm.end() ? it2->second : ("Unknown (" + std::to_string(v) + ")"));
+                              continue;
+                            }
+                            // status_0.heatdemand_status (7e51) -> heatdemand_status_map
+                            if (code == "7e51") {
+                              int v = (int) raw;
+                              auto &mm = id(heatdemand_status_map);
+                              auto it2 = mm.find(v);
+                              id(heatdemand_status).publish_state(it2 != mm.end() ? it2->second : ("Unknown (" + std::to_string(v) + ")"));
+                              continue;
+                            }
+                            // status_0.burner_status (7e7a) -> burner_status_map
+                            if (code == "7e7a") {
+                              int v = (int) raw;
+                              auto &mm = id(burner_status_map);
+                              auto it2 = mm.find(v);
+                              id(burner_status).publish_state(it2 != mm.end() ? it2->second : ("Unknown (" + std::to_string(v) + ")"));
+                              continue;
+                            }
+                            // status_5.digitalOut (65d0) - bitmasker
+                            if (code == "65d0") {
+                              uint32_t v = (uint32_t) raw;
+                              static const char* bitnames[] = {"Compressor", "Water pump", "4-way valve", "Fan motor", "Antifreeze heating strip", "Crankcase antifreeze heating strip", "Spray valve", "Auxiliary electric heater", "DHW pump", "3-way valve"};
+                              std::string s;
+                              for (int b = 0; b < 10; b++) { if (v & (1u << b)) { if (!s.empty()) s += ", "; s += bitnames[b]; } }
+                              id(digital_out).publish_state(s.empty() ? "None" : s);
+                              continue;
+                            }
+                            // status_3.Flags (77c3) - bitmasker
+                            if (code == "77c3") {
+                              uint32_t v = (uint32_t) raw;
+                              static const char* bitnames[] = {"Low load enabled", "Controlling supply temperature", "Progressive temperature request", "Silent mode active", "Heat pump forced to max power", "Heat pump regulating max power", "Was at minimum frequency", "Compressor was on"};
+                              std::string s;
+                              for (int b = 0; b < 8; b++) { if (v & (1u << b)) { if (!s.empty()) s += ", "; s += bitnames[b]; } }
+                              id(status3_flags).publish_state(s.empty() ? "None" : s);
+                              continue;
+                            }
+                            // status_3.SystemIo (77d2) - bitmasker
+                            if (code == "77d2") {
+                              uint32_t v = (uint32_t) raw;
+                              static const char* bitnames[] = {"DHW pump on", "CH pump on", "Pressure detected", "System flow detected", "DHW flow detected", "Compressor running", "Switched on", "Boiler OpenTherm connected", "Boiler requested", "Thermostat 1 OpenTherm connected", "Thermostat 1 short circuit", "Thermostat 2 OpenTherm connected", "Thermostat 2 short circuit", "Commissioning", "Gateway connected"};
+                              std::string s;
+                              for (int b = 0; b < 15; b++) { if (v & (1u << b)) { if (!s.empty()) s += ", "; s += bitnames[b]; } }
+                              id(system_io).publish_state(s.empty() ? "None" : s);
+                              continue;
+                            }
+                            // boiler_control.boiler_control_flags (b28c) - bitmasker
+                            if (code == "b28c") {
+                              uint32_t v = (uint32_t) raw;
+                              static const char* bitnames[] = {"Boiler overtemperature shutdown", "Boiler not responding", "Low load flame on", "Low load flame on (previous)", "Temperature blanking active"};
+                              std::string s;
+                              for (int b = 0; b < 5; b++) { if (v & (1u << b)) { if (!s.empty()) s += ", "; s += bitnames[b]; } }
+                              id(boiler_control_flags).publish_state(s.empty() ? "None" : s);
+                              continue;
+                            }
+                            // bivalent_service.flags (f9f2) - bitmasker
+                            if (code == "f9f2") {
+                              uint32_t v = (uint32_t) raw;
+                              static const char* bitnames[] = {"Heat pump not allowed", "HP failed, backup active", "Boiler needed", "HP COP efficiency OK", "Initial delay done", "Starting with boiler immediately", "Backup requested (previous)", "Heat pump requested", "Boiler requested", "Boiler actual state", "Boiler open-loop control", "Boiler flame detected", "Boiler flame duration short", "Low load detected", "Defrost active", "Blocking HP clock program"};
+                              std::string s;
+                              for (int b = 0; b < 16; b++) { if (v & (1u << b)) { if (!s.empty()) s += ", "; s += bitnames[b]; } }
+                              id(bivalent_flags).publish_state(s.empty() ? "None" : s);
+                              continue;
+                            }
+
+                            // generieke numerieke sensor (fallback als geen van bovenstaande codes matchte)
+                            auto it = id(xtend_sensors).find(code);
+                            if (it == id(xtend_sensors).end()) continue;
+
+                            sensor::Sensor *s = std::get<0>(it->second);
+                            float factor = std::get<1>(it->second);
+                            bool filter_na = std::get<2>(it->second);
+                            if (filter_na && (raw == 32767 || raw == -32767)) continue;
+
+                            s->publish_state(raw * factor);
+                          }
+
+                          // BYTES/STRING SENSOREN
+                          if (stats["47e0"].is<const char*>())
+                            id(software_version).publish_state(stats["47e0"].as<std::string>());
+
+                          return true;
+                        });
+                        id(line_buffer).clear();
+                      } else {
+                        id(line_buffer) += (char) c;
+                      }
                     }
-                    id(working_mode).publish_state(s);
-                    continue;
-                  }
-
-                  // status_0.heatdemand_status - codetabel via globale map
-                  if (code == "7e51") {
-                    int v = (int) raw;
-                    auto &mm = id(heatdemand_status_map);
-                    auto it2 = mm.find(v);
-                    id(heatdemand_status).publish_state(it2 != mm.end() ? it2->second : ("Unknown (" + std::to_string(v) + ")"));
-                    continue;
-                  }
-
-                  // status_0.lockout_code - codetabel via globale map
-                  if (code == "7e2c") {
-                    int v = (int) raw;
-                    auto &mm = id(lockout_code_map);
-                    auto it2 = mm.find(v);
-                    id(lockout_code).publish_state(it2 != mm.end() ? it2->second : ("Unknown (" + std::to_string(v) + ")"));
-                    continue;
-                  }
-
-                  // status_9.errorCode - codetabel via globale map
-                  if (code == "4133") {
-                    int v = (int) raw;
-                    auto &mm = id(error_code_map);
-                    auto it2 = mm.find(v);
-                    id(error_code).publish_state(it2 != mm.end() ? it2->second : ("Unknown (" + std::to_string(v) + ")"));
-                    continue;
-                  }
-
-                  // boiler_control.boiler_control_flags - bitmasker, toon actieve vlaggen
-                  if (code == "b28c") {
-                    uint32_t v = (uint32_t) raw;
-                    static const char* bitnames[] = {"bBoilerOvertemperatureShutdown", "bBoilerNoReponse", "bLowLoadFlameOn", "bLowLoadFlameOnPrev", "bTemperatureBlankingActive"};
-                    std::string s;
-                    for (int b = 0; b < 5; b++) { if (v & (1u << b)) { if (!s.empty()) s += ", "; s += bitnames[b]; } }
-                    id(boiler_control_flags).publish_state(s.empty() ? "None" : s);
-                    continue;
-                  }
-
-                  // status_3.Flags - bitmasker, toon actieve vlaggen
-                  if (code == "77c3") {
-                    uint32_t v = (uint32_t) raw;
-                    static const char* bitnames[] = {"bLowLoadEnable", "bControlSupplyTemperature", "bProgressiveTempRequest", "bSilentModeActive", "bHeatpumpForceMaxPower", "bHeatpumpRegulateMaxPower", "bHeatWasAtMinimumFreq", "bCompressorWasOn"};
-                    std::string s;
-                    for (int b = 0; b < 8; b++) { if (v & (1u << b)) { if (!s.empty()) s += ", "; s += bitnames[b]; } }
-                    id(status3_flags).publish_state(s.empty() ? "None" : s);
-                    continue;
-                  }
-
-                  // status_3.SystemIo - bitmasker, toon actieve vlaggen
-                  if (code == "77d2") {
-                    uint32_t v = (uint32_t) raw;
-                    static const char* bitnames[] = {"dhwPumpOn", "chPumpOn", "pressureDetected", "systemFlowDetected", "dhwFlowDetected", "compressorRunning", "switched_on", "boiler_opentherm_connected", "boiled_requested", "thermostat_ot1_opentherm_connected", "thermostat_ot1_shortcircuit", "thermostat_ot2_opentherm_connected", "thermostat_ot2_shortcircuit", "commissioning", "gateway_connected"};
-                    std::string s;
-                    for (int b = 0; b < 15; b++) { if (v & (1u << b)) { if (!s.empty()) s += ", "; s += bitnames[b]; } }
-                    id(system_io).publish_state(s.empty() ? "None" : s);
-                    continue;
-                  }
-
-                  // status_5.digitalOut - bitmasker, toon actieve vlaggen
-                  if (code == "65d0") {
-                    uint32_t v = (uint32_t) raw;
-                    static const char* bitnames[] = {"compressor", "waterpump", "fourWayValve", "fanMotor", "antifreezeHeatingStrip", "crankAntifreezeHeatingStrip", "sprayValve", "auxiliaryElectricHeater", "dhwPump", "threewayValve"};
-                    std::string s;
-                    for (int b = 0; b < 10; b++) { if (v & (1u << b)) { if (!s.empty()) s += ", "; s += bitnames[b]; } }
-                    id(digital_out).publish_state(s.empty() ? "None" : s);
-                    continue;
-                  }
-
-                  // bivalent_service.flags - bitmasker, toon actieve vlaggen
-                  if (code == "f9f2") {
-                    uint32_t v = (uint32_t) raw;
-                    static const char* bitnames[] = {"HeatpumpNotAllowed", "HPFailedBackupActive", "BoilerNeeded", "HPCopEfficiencyOkay", "InitialDelayDone", "bStartWithBoilerImmediatly", "bBackupReqPrev", "bHeatpumpRequested", "bBoilerRequested", "bBoilerActualState", "bBoilerOpenLoopControl", "bBoilerFlameDetected", "bBoilerFlameDurShort", "bLowLoadDetected", "bDefrostActive", "bBlockHpClockProgram"};
-                    std::string s;
-                    for (int b = 0; b < 16; b++) { if (v & (1u << b)) { if (!s.empty()) s += ", "; s += bitnames[b]; } }
-                    id(bivalent_flags).publish_state(s.empty() ? "None" : s);
-                    continue;
-                  }
-                }
-
-                // GENERIEKE SENSOREN
-                for (JsonPair kv : stats) {
-                  std::string code = kv.key().c_str();
-                  auto it = id(xtend_sensors).find(code);
-                  if (it == id(xtend_sensors).end()) continue;
-
-                  sensor::Sensor *s = std::get<0>(it->second);
-                  float factor = std::get<1>(it->second);
-                  bool filter_na = std::get<2>(it->second);
-
-                  float raw = kv.value().as<float>();
-                  if (filter_na && (raw == 32767 || raw == -32767)) continue;
-
-                  s->publish_state(raw * factor);
-                }
-
-                // FIX 2 — modern ArduinoJson check
-                if (stats["47e0"].is<const char*>())
-                  id(software_version).publish_state(stats["47e0"].as<std::string>());
-
-                return true;
-              });
-              id(line_buffer).clear();
-            } else {
-              id(line_buffer) += (char) c;
-            }
-          }
 
 text_sensor:
+  - platform: template
+    name: "Xtend Error Code"
+    id: error_code
+
+  - platform: template
+    name: "Xtend Status, Operating Mode"
+    id: working_mode
+
+  - platform: template
+    name: "Xtend Status 3 Requested Heatpump Mode"
+    id: requested_heatpump_mode
+
+  - platform: template
+    name: "Xtend Status 3 System Status"
+    id: system_status
+
+  - platform: template
+    name: "Xtend Heat Pump, Notification Code"
+    id: notification_code
+
+  - platform: template
+    name: "Xtend Heat Pump, Lockout Code"
+    id: lockout_code
+
+  - platform: template
+    name: "Xtend Heat Pump, Device Status"
+    id: heatdemand_status
+
+  - platform: template
+    name: "Xtend Heat Demand, Boiler"
+    id: burner_status
+
+  - platform: template
+    name: "Xtend Heat Pump, 4-way Valve Position"
+    id: digital_out
+
+  - platform: template
+    name: "Xtend Status, Silent Mode"
+    id: status3_flags
+
+  - platform: template
+    name: "Xtend System IO"
+    id: system_io
+
+  - platform: template
+    name: "Xtend Boiler Control Flags"
+    id: boiler_control_flags
+
+  - platform: template
+    name: "Xtend Boiler, Heat Demand"
+    id: bivalent_flags
+
   - platform: template
     name: "Xtend Software Version"
     id: software_version
 
 sensor:
   - platform: template
-    name: "Xtend Roomtemperature 1"
-    id: roomtemp_1
-    unit_of_measurement: "°C"
-    device_class: temperature
-    state_class: measurement
-    accuracy_decimals: 1
-
-  - platform: template
-    name: "Xtend Roomtemperature Setpoint 1"
-    id: roomtemp_set_1
-    unit_of_measurement: "°C"
-    device_class: temperature
-    state_class: measurement
-    accuracy_decimals: 1
-
-  - platform: template
-    name: "Xtend Notification Code"
-    id: notification_code
-    accuracy_decimals: 0
-
-  - platform: template
-    name: "Xtend Current Power Electric"
-    id: power_electric
-    unit_of_measurement: "kW"
-    device_class: power
-    state_class: measurement
-    accuracy_decimals: 3
-
-  - platform: template
-    name: "Xtend Current HP Power Thermal"
+    name: "Xtend Power, Heat pump"
     id: hp_power_thermal
     unit_of_measurement: "kW"
     device_class: power
     state_class: measurement
-    accuracy_decimals: 3
+    accuracy_decimals: 0
 
   - platform: template
-    name: "Xtend Current COP"
+    name: "Xtend Power, COP"
     id: current_cop
-    state_class: measurement
     accuracy_decimals: 1
 
   - platform: template
-    name: "Xtend Current Boiler Power Thermal"
-    id: boiler_power_thermal
-    unit_of_measurement: "kW"
-    device_class: power
-    state_class: measurement
-    accuracy_decimals: 3
-
-  - platform: template
-    name: "Xtend Current Power Thermal"
-    id: power_thermal
-    unit_of_measurement: "kW"
-    device_class: power
-    state_class: measurement
-    accuracy_decimals: 3
-
-  - platform: template
-    name: "Xtend Energy Thermal Heating Previous Day"
-    id: energy_thermal_heating_prevday
-    unit_of_measurement: "kWh"
-    device_class: energy
-    state_class: total
-    accuracy_decimals: 1
-
-  - platform: template
-    name: "Xtend COP Heating Previous Day"
-    id: cop_heating_prevday
-    state_class: measurement
-    accuracy_decimals: 1
-
-  - platform: template
-    name: "Xtend Energy Electric Heating Previous Day"
-    id: energy_electric_heating_prevday
-    unit_of_measurement: "kWh"
-    device_class: energy
-    state_class: total
-    accuracy_decimals: 1
-
-  - platform: template
-    name: "Xtend Energy Thermal Boiler Previous Day"
+    name: "Xtend Energy, Boiler Generated, Previous Day"
     id: energy_thermal_boiler_prevday
     unit_of_measurement: "kWh"
     device_class: energy
@@ -456,15 +564,84 @@ sensor:
     accuracy_decimals: 1
 
   - platform: template
-    name: "Xtend Thermal Energy Heating Total"
-    id: thermal_energy_heating_total
-    unit_of_measurement: "kWh"
-    device_class: energy
-    state_class: total_increasing
+    name: "Xtend Power, Total Thermal"
+    id: power_thermal
+    unit_of_measurement: "kW"
+    device_class: power
+    state_class: measurement
     accuracy_decimals: 0
 
   - platform: template
-    name: "Xtend Electric Energy Heating Total"
+    name: "Xtend Power, Boiler"
+    id: boiler_power_thermal
+    unit_of_measurement: "kW"
+    device_class: power
+    state_class: measurement
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Xtend Energy, Heat Pump Used, Previous Day"
+    id: energy_electric_heating_prevday
+    unit_of_measurement: "kWh"
+    device_class: energy
+    state_class: total
+    accuracy_decimals: 1
+
+  - platform: template
+    name: "Xtend Energy, Heat Pump Generated, Previous Day"
+    id: energy_thermal_heating_prevday
+    unit_of_measurement: "kWh"
+    device_class: energy
+    state_class: total
+    accuracy_decimals: 1
+
+  - platform: template
+    name: "Xtend Power, Retrieved"
+    id: power_electric
+    unit_of_measurement: "kW"
+    device_class: power
+    state_class: measurement
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Xtend Energy, Heat Pump COP, Previous Day"
+    id: cop_heating_prevday
+    state_class: total
+    accuracy_decimals: 1
+
+  - platform: template
+    name: "Xtend Heat Pump, CH water, Return"
+    id: temp_hp_return
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 2
+
+  - platform: template
+    name: "Xtend Heat Pump, CH water, Flow"
+    id: flow_system
+    unit_of_measurement: "L/min"
+    state_class: measurement
+    accuracy_decimals: 2
+
+  - platform: template
+    name: "Xtend Temperatures, Outside"
+    id: temp_outdoor
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 2
+
+  - platform: template
+    name: "Xtend Heat Pump, CH water, Supply"
+    id: temp_hp_supply
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 2
+
+  - platform: template
+    name: "Xtend Energy, Heat Pump Used, Total"
     id: electric_energy_heating_total
     unit_of_measurement: "kWh"
     device_class: energy
@@ -472,7 +649,7 @@ sensor:
     accuracy_decimals: 0
 
   - platform: template
-    name: "Xtend Thermal Energy Boiler Total"
+    name: "Xtend Energy, Boiler Generated, Total"
     id: thermal_energy_boiler_total
     unit_of_measurement: "kWh"
     device_class: energy
@@ -480,88 +657,23 @@ sensor:
     accuracy_decimals: 0
 
   - platform: template
-    name: "Xtend Start Heating Counter"
-    id: start_heating_counter
+    name: "Xtend Energy, Heat Pump Generated, Total"
+    id: thermal_energy_heating_total
+    unit_of_measurement: "kWh"
+    device_class: energy
     state_class: total_increasing
     accuracy_decimals: 0
 
   - platform: template
-    name: "Xtend Operation Heating Hours"
-    id: operation_heating_hours
-    unit_of_measurement: "h"
-    state_class: total_increasing
-    accuracy_decimals: 0
-
-  - platform: template
-    name: "Xtend Power-on Hours"
-    id: poweron_hours
-    unit_of_measurement: "h"
-    state_class: total_increasing
-    accuracy_decimals: 0
-
-  - platform: template
-    name: "Xtend Power-on Count"
-    id: poweron_number
-    state_class: total_increasing
-    accuracy_decimals: 0
-
-  - platform: template
-    name: "Xtend Start Defrost Counter"
-    id: start_defrost_counter
-    state_class: total_increasing
-    accuracy_decimals: 0
-
-  - platform: template
-    name: "Xtend Boiler Burner Starts"
-    id: boiler_burner_starts
-    state_class: total_increasing
-    accuracy_decimals: 0
-
-  - platform: template
-    name: "Xtend Boiler CH Hours"
-    id: boiler_ch_hours
-    unit_of_measurement: "h"
-    state_class: total_increasing
-    accuracy_decimals: 0
-
-  - platform: template
-    name: "Xtend Boiler DHW Hours"
-    id: boiler_dhw_hours
-    unit_of_measurement: "h"
-    state_class: total_increasing
-    accuracy_decimals: 0
-
-  - platform: template
-    name: "Xtend Boiler Flame Loss Count"
-    id: boiler_flame_loss
-    state_class: total_increasing
-    accuracy_decimals: 0
-
-  - platform: template
-    name: "Xtend Bivalent Flags (raw)"
-    id: bivalent_flags_raw
-    accuracy_decimals: 0
-
-  - platform: template
-    name: "Xtend Boiler Flame State (raw)"
-    id: boiler_flame_state_raw
-    accuracy_decimals: 0
-
-  - platform: template
-    name: "Xtend Boiler OEM Fault Code (raw)"
-    id: boiler_oem_faultcode_raw
-    accuracy_decimals: 0
-
-  - platform: template
-    name: "Xtend Exhaust Pressure"
-    id: exhaust_pressure
-    unit_of_measurement: "bar"
-    device_class: pressure
+    name: "Xtend Heat Pump, Refrigeration, Suction line gas temperature"
+    id: temp_suction
+    unit_of_measurement: "°C"
+    device_class: temperature
     state_class: measurement
     accuracy_decimals: 2
 
   - platform: template
-    name: "Xtend Suction Pressure"
+    name: "Xtend Heat Pump, Refrigeration, Suction gas pressure"
     id: suction_pressure
     unit_of_measurement: "bar"
     device_class: pressure
@@ -569,59 +681,20 @@ sensor:
     accuracy_decimals: 2
 
   - platform: template
-    name: "Xtend Water Pressure"
-    id: water_pressure
+    name: "Xtend Actual Compressor Frequency"
+    id: freq_actual
+    unit_of_measurement: "Hz"
+    device_class: frequency
+    state_class: measurement
+    accuracy_decimals: 2
+
+  - platform: template
+    name: "Xtend Heat Pump, Refrigeration, Discharge gas pressure"
+    id: exhaust_pressure
     unit_of_measurement: "bar"
     device_class: pressure
     state_class: measurement
     accuracy_decimals: 2
-
-  - platform: template
-    name: "Xtend System Flow"
-    id: flow_system
-    unit_of_measurement: "L/min"
-    state_class: measurement
-    accuracy_decimals: 2
-
-  - platform: template
-    name: "Xtend HP Return Temperature"
-    id: temp_hp_return
-    unit_of_measurement: "°C"
-    device_class: temperature
-    state_class: measurement
-    accuracy_decimals: 1
-
-  - platform: template
-    name: "Xtend HP Supply Temperature"
-    id: temp_hp_supply
-    unit_of_measurement: "°C"
-    device_class: temperature
-    state_class: measurement
-    accuracy_decimals: 1
-
-  - platform: template
-    name: "Xtend Requested Temperature"
-    id: temp_requested
-    unit_of_measurement: "°C"
-    device_class: temperature
-    state_class: measurement
-    accuracy_decimals: 1
-
-  - platform: template
-    name: "Xtend Exhaust Temperature"
-    id: temp_exhaust
-    unit_of_measurement: "°C"
-    device_class: temperature
-    state_class: measurement
-    accuracy_decimals: 1
-
-  - platform: template
-    name: "Xtend Suction Temperature"
-    id: temp_suction
-    unit_of_measurement: "°C"
-    device_class: temperature
-    state_class: measurement
-    accuracy_decimals: 1
 
   - platform: template
     name: "Xtend Coil Temperature"
@@ -629,37 +702,65 @@ sensor:
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
-    accuracy_decimals: 1
+    accuracy_decimals: 2
 
   - platform: template
-    name: "Xtend Suction Overheat"
-    id: suction_overheat
+    name: "Xtend Heat Pump, Refrigeration, Exhaust gas temperature"
+    id: temp_exhaust
     unit_of_measurement: "°C"
+    device_class: temperature
     state_class: measurement
-    accuracy_decimals: 1
+    accuracy_decimals: 2
+
+  - platform: template
+    name: "Xtend Heat Pump, Defrost Cycles"
+    id: start_defrost_counter
+    state_class: total_increasing
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Xtend Heat Pump, Compressor Starts"
+    id: start_heating_counter
+    state_class: total_increasing
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Xtend Heat Pump, Runtime"
+    id: operation_heating_hours
+    unit_of_measurement: "h"
+    state_class: total_increasing
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Xtend Heat Pump, Refrigeration, T condensor gas"
+    id: temp_condensor_gas
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 2
 
   - platform: template
     name: "Xtend Exhaust Overheat"
     id: exhaust_overheat
     unit_of_measurement: "°C"
+    device_class: temperature
     state_class: measurement
-    accuracy_decimals: 1
+    accuracy_decimals: 2
 
   - platform: template
-    name: "Xtend Actual Compressor Frequency"
-    id: freq_actual
-    unit_of_measurement: "Hz"
-    device_class: frequency
+    name: "Xtend Heat Pump, Refrigeration, subcooling"
+    id: temp_subcooling
+    unit_of_measurement: "°C"
+    device_class: temperature
     state_class: measurement
-    accuracy_decimals: 1
+    accuracy_decimals: 2
 
   - platform: template
-    name: "Xtend Compressor Frequency Setpoint"
-    id: freq_setpoint
-    unit_of_measurement: "Hz"
-    device_class: frequency
+    name: "Xtend Heat Pump, Eev position"
+    id: eev_steps
+    unit_of_measurement: "steps"
     state_class: measurement
-    accuracy_decimals: 1
+    accuracy_decimals: 0
 
   - platform: template
     name: "Xtend Fan 1 Speed"
@@ -669,132 +770,128 @@ sensor:
     accuracy_decimals: 0
 
   - platform: template
-    name: "Xtend Fan Speed Setpoint"
-    id: fan_speed_setpoint
-    unit_of_measurement: "rpm"
-    state_class: measurement
-    accuracy_decimals: 0
-
-  - platform: template
-    name: "Xtend EEV Steps"
-    id: eev_steps
-    unit_of_measurement: "steps"
-    state_class: measurement
-    accuracy_decimals: 0
-
-  - platform: template
-    name: "Xtend Outdoor Temperature"
-    id: temp_outdoor
-    unit_of_measurement: "°C"
-    device_class: temperature
-    state_class: measurement
-    accuracy_decimals: 1
-
-  - platform: template
-    name: "Xtend Boiler Modulation Level"
-    id: boiler_modulation_level
-    unit_of_measurement: "%"
-    state_class: measurement
-    accuracy_decimals: 1
-
-  - platform: template
-    name: "Xtend Subcooling Temperature"
-    id: temp_subcooling
-    unit_of_measurement: "°C"
-    state_class: measurement
-    accuracy_decimals: 1
-
-  - platform: template
-    name: "Xtend Condensor Refrigerant Gas Temperature"
-    id: temp_condensor_gas
-    unit_of_measurement: "°C"
-    device_class: temperature
-    state_class: measurement
-    accuracy_decimals: 1
-
-  - platform: template
-    name: "Xtend Condensor Refrigerant Liquid Temperature"
+    name: "Xtend Heat Pump, Refrigeration, T condensor liquid"
     id: temp_condensor_liquid
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
-    accuracy_decimals: 1
+    accuracy_decimals: 2
 
   - platform: template
-    name: "Xtend Supply Temperature"
-    id: temp_supply
+    name: "Xtend Suction Overheat"
+    id: suction_overheat
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
-    accuracy_decimals: 1
+    accuracy_decimals: 2
 
   - platform: template
-    name: "Xtend Return Temperature"
-    id: temp_return
+    name: "Xtend Heat Pump, Power Cycles"
+    id: poweron_number
+    state_class: total_increasing
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Xtend Heat Pump, Hours on Power"
+    id: poweron_hours
+    unit_of_measurement: "h"
+    state_class: total_increasing
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Xtend Heat Pump, CH Water, Setpoint"
+    id: temp_requested
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
-    accuracy_decimals: 1
+    accuracy_decimals: 2
 
   - platform: template
-    name: "Xtend Setpoint Temperature"
+    name: "Xtend Temperatures, Target & Setpoint"
+    id: roomtemp_set_1
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 2
+
+  - platform: template
+    name: "Xtend Temperatures, Room"
+    id: roomtemp_1
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 2
+
+  - platform: template
+    name: "Xtend Boiler, CH Water, Setpoint"
     id: temp_setpoint
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
-    accuracy_decimals: 1
-
-select:
-  - platform: template
-    name: "Xtend Working Mode"
-    id: working_mode
-    options: ["Cooling", "Heating", "Defrosting", "Pumpdown", "Undefined"]
-    optimistic: true
+    accuracy_decimals: 2
 
   - platform: template
-    name: "Xtend Heat Demand Status"
-    id: heatdemand_status
-    options: ["sensortest", "commissioning", "crankheating", "service", "dhw", "dhw_int", "boiler_int", "boiler_ext", "postrun_boiler", "ch", "ch_wait", "defrosting", "opentherm", "heatup", "frost", "starting_ch", "postrun_ch", "standby", "off", "ch_rf", "dhw_hreco", "starting_cooling", "cooling", "cooling_wait", "postrun_cooling"]
-    optimistic: true
+    name: "Xtend Boiler, CH Water, Return"
+    id: temp_return
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 2
 
   - platform: template
-    name: "Xtend Boiler Control Flags"
-    id: boiler_control_flags
-    options: ["None", "bBoilerOvertemperatureShutdown", "bBoilerNoReponse", "bLowLoadFlameOn", "bLowLoadFlameOnPrev", "bTemperatureBlankingActive"]
-    optimistic: true
+    name: "Xtend Heat Pump & Boiler, CH water, Pressure"
+    id: water_pressure
+    unit_of_measurement: "bar"
+    device_class: pressure
+    state_class: measurement
+    accuracy_decimals: 2
 
   - platform: template
-    name: "Xtend Status Flags"
-    id: status3_flags
-    options: ["None", "bLowLoadEnable", "bControlSupplyTemperature", "bProgressiveTempRequest", "bSilentModeActive", "bHeatpumpForceMaxPower", "bHeatpumpRegulateMaxPower", "bHeatWasAtMinimumFreq", "bCompressorWasOn"]
-    optimistic: true
+    name: "Xtend Boiler, CH Water, Supply"
+    id: temp_supply
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 2
 
   - platform: template
-    name: "Xtend System IO"
-    id: system_io
-    options: ["None", "dhwPumpOn", "chPumpOn", "pressureDetected", "systemFlowDetected", "dhwFlowDetected", "compressorRunning", "switched_on", "boiler_opentherm_connected", "boiled_requested", "thermostat_ot1_opentherm_connected", "thermostat_ot1_shortcircuit", "thermostat_ot2_opentherm_connected", "thermostat_ot2_shortcircuit", "commissioning", "gateway_connected"]
-    optimistic: true
+    name: "Xtend Boiler OEM Fault Code (raw)"
+    id: boiler_oem_faultcode_raw
+    accuracy_decimals: 0
 
   - platform: template
-    name: "Xtend Digital Out"
-    id: digital_out
-    options: ["None", "compressor", "waterpump", "fourWayValve", "fanMotor", "antifreezeHeatingStrip", "crankAntifreezeHeatingStrip", "sprayValve", "auxiliaryElectricHeater", "dhwPump", "threewayValve"]
-    optimistic: true
+    name: "Xtend Boiler, Modulation Level"
+    id: boiler_modulation_level
+    unit_of_measurement: "%"
+    state_class: measurement
+    accuracy_decimals: 2
 
   - platform: template
-    name: "Xtend Bivalent Flags"
-    id: bivalent_flags
-    options: ["None", "HeatpumpNotAllowed", "HPFailedBackupActive", "BoilerNeeded", "HPCopEfficiencyOkay", "InitialDelayDone", "bStartWithBoilerImmediatly", "bBackupReqPrev", "bHeatpumpRequested", "bBoilerRequested", "bBoilerActualState", "bBoilerOpenLoopControl", "bBoilerFlameDetected", "bBoilerFlameDurShort", "bLowLoadDetected", "bDefrostActive", "bBlockHpClockProgram"]
-    optimistic: true
+    name: "Xtend Boiler, Boiler Starts"
+    id: boiler_burner_starts
+    state_class: total_increasing
+    accuracy_decimals: 0
 
   - platform: template
-    name: "Xtend Lockout Code"
-    id: lockout_code
-    options: ["LOCKOUT_NO_ERROR", "LOCKOUT_CH_PUMP", "LOCKOUT_DHW_PUMP", "LOCKOUT_CONDENSOR_OVERHEAT", "LOCKOUT_ERROR_LOCKOUT_DEVICE", "LOCKOUT_DEFROST_WATER_TEMP_LOW", "LOCKOUT_HEATPUMP_TYPE_UNCONFIGURED", "LOCKOUT_BMM_ILLIGAL_SERIAL", "LOCKOUT_STORAGEHANDLER_SYNC", "LOCKOUT_FIRMWARE_COMPATIBILITY", "LOCKOUT_XTP_DEVICE_INTERNAL_FAULT", "LOCKOUT_XTP_DEVICE_CONFIG_FAULT", "LOCKOUT_XTP_COMMUNICATION_FAULT", "LOCKOUT_XTP_START_FAULT", "LOCKOUT_ERROR_UNKNOWN", "LOCKOUT_SENSOR_HP_RETURN", "LOCKOUT_SENSOR_HP_SUPPLY", "LOCKOUT_SENSOR_SYSTEM_SUPPLY", "LOCKOUT_SENSOR_OUTDOOR", "LOCKOUT_SENSOR_BOILER_RETURN", "LOCKOUT_SENSOR_BOILER_SUPPLY", "LOCKOUT_CODE_THERMOSTAT_HEATPUMP", "LOCKOUT_CODE_THERMOSTAT_BOILER", "LOCKOUT_BYPASS_MODE_ACTIVE"]
-    optimistic: true
+    name: "Xtend Boiler, Flame loss"
+    id: boiler_flame_loss
+    accuracy_decimals: 0
 
   - platform: template
-    name: "Xtend Error Code"
-    id: error_code
-    options: ["HP_GEN_FAULT_NONE", "HP_GEN_FAULT_DEFROST_FAILED", "HP_GEN_FAULT_LOW_PRESSURE", "HP_GEN_FAULT_HIGH_PRESSURE", "HP_GEN_FAULT_COMPRESSOR_OUTSIDE_OP_RANGE", "HP_GEN_FAULT_EXHAUST_TEMP_TOO_HIGH", "HP_GEN_FAULT_CONDENSOR_TEMP_TOO_HIGH", "HP_GEN_FAULT_OUTDOORUNIT_SPECIFIC_AUTO_RESTART", "HP_GEN_FAULT_OUTDOORUNIT_SPECIFIC_LOCKED", "HP_GEN_FAULT_OUTDOORUNIT_CONTROL_GUARD", "HP_GEN_FAULT_WATER_FLOW_TOO_LOW", "HP_GEN_FAULT_WATER_FLOW_TOO_LOW_DEFROST", "HP_GEN_FAULT_CONDENSOR_GAS_TOO_LOW", "HP_GEN_FAULT_NO_TOUTDOOR_SENSOR", "HP_GEN_FAULT_PUMPDOWN_FAILED", "HP_GEN_FAULT_DSH_TOO_LOW", "HP_GEN_FAULT_SSH_TOO_LOW", "HP_GEN_FAULT_SSH_TOO_HIGH", "HP_GEN_FAULT_COOLING_MODE_TEMPS", "HP_GEN_FAULT_CONDENSOR_LIQUID_SENSOR", "HP_GEN_FAULT_XTP_DEVICE_WATER_INLET", "HP_GEN_FAULT_XTP_DEVICE_WATER_OUTLET", "HP_GEN_FAULT_XTP_DEVICE_REFRIGERANT_LIQUID", "HP_GEN_FAULT_XTP_DEVICE_REFRIGERANT_GAS", "AC_BUS_VOLTAGE_HIGH", "AC_BUS_VOLTAGE_LOW", "DC_BUS_OVERVOLTAGE", "COMPRESSOR_OVERCURRENT_HARDWARE", "COMPRESSOR_OVERCURRENT_FIRMWARE", "AC_INPUT_OVERCURRENT_HARDWARE", "AC_INPUT_OVERCURRENT_FIRMWARE", "COMPRESSOR_CURRENT_OVERLOAD", "PHASE_LOSS_LOSS_OF_SYNCHRONISM", "IPM_TEMP_PROTECTION", "OUTDOOR_DC_FAN_FAULT", "SUCTION_TEMP_SENSOR_ERROR", "ODU_DISCHARGE_TEMP_SENSOR_ERROR", "ODU_COIL_TEMP_SENSOR_ERROR", "AMBIENT_TEMP_SENSOR_ERROR", "DISCHARGE_TEMP_HIGH_ERROR", "CONDENSING_TEMP_HIGH_ERROR", "ODU_IDU_COMMUNICATION_ERROR", "DC_BUS_UNDERVOLTAGE", "NO_ERROR", "UNCONNECTED"]
-    optimistic: true
+    name: "Xtend Boiler, Domestic Hot Water runtime"
+    id: boiler_dhw_hours
+    unit_of_measurement: "h"
+    state_class: total_increasing
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Xtend Boiler, Runtime CH"
+    id: boiler_ch_hours
+    unit_of_measurement: "h"
+    state_class: total_increasing
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Xtend Boiler Flame State (raw)"
+    id: boiler_flame_state_raw
+    accuracy_decimals: 0
