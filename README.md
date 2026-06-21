@@ -24,3 +24,5 @@ Only 1 board needs to be powered:
 
 Example of result:
 <img width="1245" height="1788" alt="image" src="https://github.com/user-attachments/assets/6022e854-4cdf-4874-9f3e-cee2f3b2da07" />
+
+Met hulp van: https://github.com/thomasvt1/xtend-bridge/blob/main/parse-message.js
