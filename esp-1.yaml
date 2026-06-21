@@ -1,9 +1,11 @@
-#ESP1 - The Xtend connector - Cennct to the Xtend
+#ESP1 - De xTend connector
 
 esp32:
-  board: lolin_s3_mini # Change for other board
+  board: lolin_s3_mini
   framework:
     type: esp-idf
+    sdkconfig_options:
+      CONFIG_ESP_TASK_WDT_TIMEOUT_S: "15"
 
 esphome:
   name: esp-1
@@ -17,11 +19,11 @@ ota:
 # verbindt met het Xtend-toestel zelf, niet met je thuisnetwerk
 wifi:
   networks:
-    - ssid: "Xtend-xxxxxxxxxx"     # SSID from Xtend
-      password: "xxxxxxxxxx"       # Password from Xtend
+    - ssid: "Xtend-2510109278"     # SSID van jouw Xtend
+      password: "cZWh(P9ovw"       # Password van jouw Xtend
 
 logger:
-  baud_rate: 0   # UART vrijhouden voor de databridge
+  level: DEBUG
 
 uart:
   id: uart_bus
@@ -35,7 +37,7 @@ interval:
   - interval: 10s
     then:
       - http_request.get:
-          url: "http://10.20.30.1/api/stats/values?fields=79b3,7921,7940,50f2,503e,5041,5088,5077,50ae,50f7,5099,506a,63f0,63b3,63df,6a8e,6ac5,71a7,7160,6a53,8e00,8ef9,8e37,8e18,f9f2,65b0,6579,7ed3,629c,6280,62e7,7767,65d9,6505,77c3,7e51,77d2,65c1,6cfb,6c33,65a7,658a,6c8a,6c61,6578,65d0,6c66,62d1,b28c,b2bc,84d1,7e2c,8439,4133,6c53,6c26,6ceb,7ee6,7e81,7e31,47e0"
+          url: "http://10.20.30.1/api/stats/values?fields=4133,47e0,503e,5041,506a,5077,5088,5099,50ae,50f2,50f7,6280,629c,62d1,62e7,63b3,63df,63f0,6505,6578,6579,65a7,65b0,65c1,65d0,65d9,6a53,6a8e,6ac5,6c26,6c33,6c53,6c66,6c8a,6ceb,6cfb,7160,71a7,7767,777d,77c3,77d2,77dd,7921,7940,79b3,7e2c,7e31,7e51,7e7a,7e81,7ed3,7ee6,8439,84d1,8e00,8e18,8e37,8ef9,b28c,b2bc,f9f2"
           capture_response: true
           max_response_buffer_size: 4096
           on_response:
@@ -44,6 +46,7 @@ interval:
                   if (response->status_code == 200) {
                     id(uart_bus).write_str(body.c_str());
                     id(uart_bus).write_byte('\n');
+                    ESP_LOGI("mem", "body: %u bytes, vrije heap: %u bytes", (unsigned) body.length(), (unsigned) esp_get_free_heap_size());
                   } else {
                     ESP_LOGW("xtend", "HTTP fout: %d", response->status_code);
                   }
