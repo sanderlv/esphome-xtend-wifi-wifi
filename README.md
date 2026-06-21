@@ -23,6 +23,10 @@ Only 1 board needs to be powered:
 <img width="318" height="366" alt="image" src="https://github.com/user-attachments/assets/8fb8eb4b-185a-4cfb-b071-2ee483100aed" />
 
 Example of result:
-<img width="1245" height="1788" alt="image" src="https://github.com/user-attachments/assets/6022e854-4cdf-4874-9f3e-cee2f3b2da07" />
+<img width="423" height="1358" alt="image" src="https://github.com/user-attachments/assets/8da9e28a-c9f6-44da-8721-6e3009c3753a" />
 
-Met hulp van: https://github.com/thomasvt1/xtend-bridge/blob/main/parse-message.js
+Met hulp van: 
+https://github.com/thomasvt1/xtend-bridge/blob/main/parse-message.js
+https://github.com/WillemD61/XTEND-plugin
+https://github.com/thomasvt1/xtend-bridge
+https://github.com/DSchoutsen/HA_connection_Xtend
