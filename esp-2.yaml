@@ -747,6 +747,20 @@ sensor:
     state_class: measurement
     accuracy_decimals: 2
 
+  # Calculated: heat pump supply minus return. No device_class on purpose:
+  # HA would convert a temperature difference as if it were a temperature.
+  - platform: template
+    name: "Xtend Heat Pump, CH water, Delta T"
+    id: hp_delta_t
+    unit_of_measurement: "°C"
+    state_class: measurement
+    accuracy_decimals: 1
+    update_interval: 10s
+    lambda: |-
+      float s = id(temp_hp_supply).state, r = id(temp_hp_return).state;
+      if (std::isnan(s) || std::isnan(r)) return NAN;
+      return s - r;
+
   - platform: template
     name: "Xtend Energy, Heat Pump Used, Total"
     id: electric_energy_heating_total
