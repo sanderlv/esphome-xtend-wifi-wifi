@@ -1,4 +1,22 @@
-#ESP1 - De xTend connector
+# ESP-1 - Xtend connector
+#
+# Joins the Xtend's own WiFi, polls its local API and forwards the JSON over
+# UART to ESP-2. It never reaches Home Assistant, so there is no api:
+# (with api: and no client connected, ESPHome reboots it every 15 minutes).
+#
+# Wiring: GPIO16 (TX) -> ESP-2 GPIO16 (RX)   data
+#         GPIO18 (RX) <- ESP-2 GPIO18 (TX)   commands (maintenance / restart)
+#
+# OTA: press "Xtend Poller Maintenance Mode" on ESP-2 in Home Assistant.
+# ESP-1 then joins your home WiFi for 10 minutes so it can be flashed from the
+# ESPHome dashboard. Any reboot (including the one after the OTA) returns it
+# to the Xtend WiFi.
+
+substitutions:
+  xtend_ssid: "Xtend-XXXXXXXXXX"        # SSID of your Xtend
+  xtend_password: "YOUR XTEND PASSWORD"  # WiFi password of your Xtend
+  home_ssid: YOURSSID                    # home WiFi, only used in maintenance mode
+  home_password: YOUR PASSWORD
 
 esp32:
   board: lolin_s3_mini
@@ -10,43 +28,162 @@ esp32:
 esphome:
   name: esp-1
 
-# Enable Home Assistant API
-api:
-
 ota:
   platform: esphome
 
-# verbindt met het Xtend-toestel zelf, niet met je thuisnetwerk
+# Connects to the Xtend unit itself, not to the home network
 wifi:
   networks:
-    - ssid: "Xtend-XXXXXXXXXX"     # SSID van jouw Xtend
-      password: "YOUR XTEND PASSWORD"       # Password van jouw Xtend
+    - ssid: $xtend_ssid
+      password: $xtend_password
+  # Address the ESPHome dashboard uses for OTA while in maintenance mode.
+  # Make a DHCP reservation for ESP-1 on your home WiFi and fill it in here.
+  # use_address: 192.168.x.x
 
 logger:
   level: DEBUG
+  # No baud_rate: 0 needed: this ESP32-S3 logs over its native USB Serial/JTAG
+  # port, separate from GPIO16, so logging does not touch the UART bridge.
 
 uart:
   id: uart_bus
   tx_pin: GPIO16
+  rx_pin: GPIO18
   baud_rate: 115200
 
 http_request:
   timeout: 10s
 
+globals:
+  - id: maintenance_mode
+    type: bool
+    restore_value: false
+    initial_value: "false"
+  - id: http_ok
+    type: bool
+    restore_value: false
+    initial_value: "false"
+  - id: cmd_buffer
+    type: std::string
+    restore_value: false
+    initial_value: '""'
+
+sensor:
+  - platform: wifi_signal
+    id: poller_rssi
+    internal: true
+    update_interval: 30s
+  - platform: uptime
+    id: poller_uptime
+    internal: true
+    update_interval: 30s
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      id: poller_ip
+      internal: true
+    ssid:
+      id: poller_ssid
+      internal: true
+
+script:
+  - id: enter_maintenance
+    mode: single
+    then:
+      - logger.log: "Maintenance mode: joining home WiFi for OTA"
+      - globals.set:
+          id: maintenance_mode
+          value: "true"
+      - wifi.configure:
+          ssid: $home_ssid
+          password: $home_password
+          save: false
+          timeout: 30s
+          on_connect:
+            - logger.log: "Maintenance mode: on home WiFi, OTA open for 10 minutes"
+          on_error:
+            - logger.log: "Maintenance mode: home WiFi failed, rebooting to Xtend WiFi"
+            - lambda: "App.safe_reboot();"
+      - delay: 10min
+      - logger.log: "Maintenance window over, rebooting to Xtend WiFi"
+      - lambda: "App.safe_reboot();"
+
 interval:
+  # Poll the Xtend API and forward the body as a single line
   - interval: 10s
     then:
-      - http_request.get:
-          url: "http://10.20.30.1/api/stats/values?fields=4133,47e0,503e,5041,506a,5077,5088,5099,50ae,50f2,50f7,6280,629c,62d1,62e7,63b3,63df,63f0,6505,6578,6579,65a7,65b0,65c1,65d0,65d9,6a53,6a8e,6ac5,6c26,6c33,6c53,6c66,6c8a,6ceb,6cfb,7160,71a7,7767,777d,77c3,77d2,77dd,7921,7940,79b3,7e2c,7e31,7e51,7e7a,7e81,7ed3,7ee6,8439,84d1,8e00,8e18,8e37,8ef9,b28c,b2bc,f9f2"
-          capture_response: true
-          max_response_buffer_size: 4096
-          on_response:
-            then:
-              - lambda: |-
-                  if (response->status_code == 200) {
-                    id(uart_bus).write_str(body.c_str());
-                    id(uart_bus).write_byte('\n');
-                    ESP_LOGI("mem", "body: %u bytes, vrije heap: %u bytes", (unsigned) body.length(), (unsigned) esp_get_free_heap_size());
-                  } else {
-                    ESP_LOGW("xtend", "HTTP fout: %d", response->status_code);
-                  }
+      - if:
+          condition:
+            and:
+              - lambda: "return !id(maintenance_mode);"
+              - wifi.connected:
+          then:
+            - http_request.get:
+                url: "http://10.20.30.1/api/stats/values?fields=4133,47e0,503e,5041,506a,5077,5088,5099,50ae,50f2,50f7,6280,629c,62d1,62e7,63b3,63df,63f0,6505,6578,6579,65a7,65b0,65c1,65d0,65d9,6a53,6a8e,6ac5,6c26,6c33,6c53,6c66,6c8a,6ceb,6cfb,7160,71a7,7767,777d,77c3,77d2,77dd,7921,7940,79b3,7e2c,7e31,7e51,7e7a,7e81,7ed3,7ee6,8439,84d1,8e00,8e18,8e37,8ef9,b28c,b2bc,f9f2"
+                capture_response: true
+                max_response_buffer_size: 4096
+                on_response:
+                  then:
+                    - lambda: |-
+                        if (response->status_code != 200) {
+                          ESP_LOGW("xtend", "HTTP error: %d", response->status_code);
+                          id(http_ok) = false;
+                          return;
+                        }
+                        // Strip line breaks: one JSON document = one UART line
+                        std::string line;
+                        line.reserve(body.size() + 1);
+                        for (char c : body) {
+                          if (c != '\n' && c != '\r') line += c;
+                        }
+                        line += '\n';
+                        id(uart_bus).write_str(line.c_str());
+                        id(http_ok) = true;
+                        ESP_LOGI("mem", "body: %u bytes, free heap: %u bytes", (unsigned) body.length(), (unsigned) esp_get_free_heap_size());
+                on_error:
+                  then:
+                    - logger.log:
+                        level: WARN
+                        format: "Xtend API request failed"
+                    - globals.set:
+                        id: http_ok
+                        value: "false"
+
+  # Status line for ESP-2: signal, uptime, API state, current network
+  - interval: 30s
+    then:
+      - lambda: |-
+          float rssi = id(poller_rssi).state;
+          float up = id(poller_uptime).state;
+          char buf[192];
+          snprintf(buf, sizeof(buf),
+                   "{\"poller\":{\"rssi\":%d,\"uptime\":%u,\"http_ok\":%s,\"maint\":%s,\"ssid\":\"%s\",\"ip\":\"%s\"}}\n",
+                   std::isnan(rssi) ? 0 : (int) rssi,
+                   std::isnan(up) ? 0u : (unsigned) up,
+                   id(http_ok) ? "true" : "false",
+                   id(maintenance_mode) ? "true" : "false",
+                   id(poller_ssid).state.c_str(),
+                   id(poller_ip).state.c_str());
+          id(uart_bus).write_str(buf);
+
+  # Commands from ESP-2
+  - interval: 100ms
+    then:
+      - lambda: |-
+          while (id(uart_bus).available()) {
+            uint8_t c;
+            id(uart_bus).read_byte(&c);
+            if (c == '\n') {
+              std::string cmd = id(cmd_buffer);
+              id(cmd_buffer).clear();
+              if (cmd == "MAINT") {
+                id(enter_maintenance).execute();
+              } else if (cmd == "REBOOT") {
+                ESP_LOGI("xtend", "Restart requested by ESP-2");
+                App.safe_reboot();
+              }
+            } else if (c != '\r' && id(cmd_buffer).size() < 32) {
+              id(cmd_buffer) += (char) c;
+            }
+          }
