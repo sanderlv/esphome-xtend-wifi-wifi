@@ -101,26 +101,26 @@ esphome:
     then:
       - lambda: |-
           auto &m = id(xtend_sensors);
-                    m["503e"] = std::make_tuple(id(hp_power_thermal), 0.001f, false);
+                    m["503e"] = std::make_tuple(id(hp_power_thermal), 0.001f, true);
                     m["5041"] = std::make_tuple(id(current_cop), 0.1f, false);
-                    m["506a"] = std::make_tuple(id(energy_thermal_boiler_prevday), 0.1f, false);
-                    m["5077"] = std::make_tuple(id(power_thermal), 0.001f, false);
-                    m["5088"] = std::make_tuple(id(boiler_power_thermal), 0.001f, false);
-                    m["5099"] = std::make_tuple(id(energy_electric_heating_prevday), 0.1f, false);
-                    m["50ae"] = std::make_tuple(id(energy_thermal_heating_prevday), 0.1f, false);
-                    m["50f2"] = std::make_tuple(id(power_electric), 0.001f, false);
+                    m["506a"] = std::make_tuple(id(energy_thermal_boiler_prevday), 0.1f, true);
+                    m["5077"] = std::make_tuple(id(power_thermal), 0.001f, true);
+                    m["5088"] = std::make_tuple(id(boiler_power_thermal), 0.001f, true);
+                    m["5099"] = std::make_tuple(id(energy_electric_heating_prevday), 0.1f, true);
+                    m["50ae"] = std::make_tuple(id(energy_thermal_heating_prevday), 0.1f, true);
+                    m["50f2"] = std::make_tuple(id(power_electric), 0.001f, true);
                     m["50f7"] = std::make_tuple(id(cop_heating_prevday), 0.1f, false);
                     m["6280"] = std::make_tuple(id(temp_hp_return), 0.01f, true);
-                    m["629c"] = std::make_tuple(id(flow_system), 0.01f, false);
+                    m["629c"] = std::make_tuple(id(flow_system), 0.01f, true);
                     m["62d1"] = std::make_tuple(id(temp_outdoor), 0.01f, true);
                     m["62e7"] = std::make_tuple(id(temp_hp_supply), 0.01f, true);
                     m["63b3"] = std::make_tuple(id(electric_energy_heating_total), 1.0f, false);
                     m["63df"] = std::make_tuple(id(thermal_energy_boiler_total), 1.0f, false);
                     m["63f0"] = std::make_tuple(id(thermal_energy_heating_total), 1.0f, false);
                     m["6505"] = std::make_tuple(id(temp_suction), 0.01f, true);
-                    m["6579"] = std::make_tuple(id(suction_pressure), 0.01f, false);
-                    m["65a7"] = std::make_tuple(id(freq_actual), 0.01f, false);
-                    m["65b0"] = std::make_tuple(id(exhaust_pressure), 0.01f, false);
+                    m["6579"] = std::make_tuple(id(suction_pressure), 0.01f, true);
+                    m["65a7"] = std::make_tuple(id(freq_actual), 0.01f, true);
+                    m["65b0"] = std::make_tuple(id(exhaust_pressure), 0.01f, true);
                     m["65c1"] = std::make_tuple(id(temp_coil), 0.01f, true);
                     m["65d9"] = std::make_tuple(id(temp_exhaust), 0.01f, true);
                     m["6a53"] = std::make_tuple(id(start_defrost_counter), 1.0f, false);
@@ -129,8 +129,8 @@ esphome:
                     m["6c26"] = std::make_tuple(id(temp_condensor_gas), 0.01f, true);
                     m["6c33"] = std::make_tuple(id(exhaust_overheat), 0.01f, true);
                     m["6c53"] = std::make_tuple(id(temp_subcooling), 0.01f, true);
-                    m["6c66"] = std::make_tuple(id(eev_steps), 1.0f, false);
-                    m["6c8a"] = std::make_tuple(id(fan1_speed), 1.0f, false);
+                    m["6c66"] = std::make_tuple(id(eev_steps), 1.0f, true);
+                    m["6c8a"] = std::make_tuple(id(fan1_speed), 1.0f, true);
                     m["6ceb"] = std::make_tuple(id(temp_condensor_liquid), 0.01f, true);
                     m["6cfb"] = std::make_tuple(id(suction_overheat), 0.01f, true);
                     m["7160"] = std::make_tuple(id(poweron_number), 1.0f, false);
@@ -143,7 +143,7 @@ esphome:
                     m["7ed3"] = std::make_tuple(id(water_pressure), 0.01f, true);
                     m["7ee6"] = std::make_tuple(id(temp_supply), 0.01f, true);
                     m["8439"] = std::make_tuple(id(boiler_oem_faultcode_raw), 1.0f, false);
-                    m["84d1"] = std::make_tuple(id(boiler_modulation_level), 0.01f, false);
+                    m["84d1"] = std::make_tuple(id(boiler_modulation_level), 0.01f, true);
                     m["8e00"] = std::make_tuple(id(boiler_burner_starts), 1.0f, false);
                     m["8e18"] = std::make_tuple(id(boiler_flame_loss), 1.0f, false);
                     m["8e37"] = std::make_tuple(id(boiler_dhw_hours), 1.0f, false);
@@ -372,11 +372,6 @@ interval:
                           if (!root["stats"].is<JsonObject>()) return false;
                           JsonObject stats = root["stats"].as<JsonObject>();
 
-                          // DEBUG: log all received codes once per line (remove when no longer needed)
-                          std::string seen_codes;
-                          for (JsonPair kv : stats) { seen_codes += kv.key().c_str(); seen_codes += " "; }
-                          ESP_LOGD("xtend_debug", "Received codes (%d): %s", (int) stats.size(), seen_codes.c_str());
-
                           // Single pass: enum/bitmask checks per key first, otherwise the generic sensor
                           for (JsonPair kv : stats) {
                             std::string code = kv.key().c_str();
@@ -499,7 +494,11 @@ interval:
                             sensor::Sensor *s = std::get<0>(it->second);
                             float factor = std::get<1>(it->second);
                             bool filter_na = std::get<2>(it->second);
-                            if (filter_na && (raw == 32767 || raw == -32767)) continue;
+                            if (filter_na && (raw == 32767 || raw == -32767)) {
+                              // 32767 = not available: show unknown instead of keeping the last value
+                              if (!std::isnan(s->state)) s->publish_state(NAN);
+                              continue;
+                            }
 
                             s->publish_state(raw * factor);
                           }
@@ -536,6 +535,11 @@ interval:
             id(data_stale) = true;
           } else if (data_fresh) {
             id(data_stale) = false;
+          }
+          if (!link_fresh && id(last_link_ms) != 0) {
+            id(xtend_api_ok).publish_state(false);
+            if (!std::isnan(id(poller_rssi).state)) id(poller_rssi).publish_state(NAN);
+            if (!std::isnan(id(poller_uptime).state)) id(poller_uptime).publish_state(NAN);
           }
 
 button:

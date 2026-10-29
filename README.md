@@ -44,6 +44,7 @@ ESP-1 lives on the Xtend's network, so it is not reachable for normal OTA. Press
 **Diagnostics**
 
 - **Xtend Data OK**: off when no Xtend data arrived for 60 s; the numeric sensors then go to unknown instead of freezing at their last value.
+- Fields the Xtend reports as not available (32767) show as unknown. Not every Xtend/boiler combination provides **Xtend Boiler, CH Water, Return**, and **Xtend Boiler, CH Water, Setpoint** only has a value while the Xtend asks the boiler (CV ketel) for heat.
 - **Xtend API Reachable**, **Xtend Poller Link**, **Xtend Poller WiFi Signal / Uptime / SSID / IP**: health of ESP-1 and its link to the Xtend.
 - **Xtend Poller Restart**: remote restart of ESP-1.
 
