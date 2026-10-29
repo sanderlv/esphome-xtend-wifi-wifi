@@ -1,7 +1,10 @@
-# ESP-2 voor de xTend
+# ESP-2 for the Xtend
+#
+# Wiring: GPIO16 (RX) <- ESP-1 GPIO16 (TX)   data
+#         GPIO18 (TX) -> ESP-1 GPIO18 (RX)   commands (maintenance / restart)
 
 substitutions:
-  esp_name: esp-1
+  esp_name: esp-2
   ssid: YOURSSID
   password: YOUR PASSWORD
 
@@ -13,7 +16,7 @@ esp32:
 wifi:
   ssid: $ssid
   password: $password
-  @use_address: 192.168.6.112
+  # use_address: 192.168.x.x  # optional, fixed address of ESP-2
   ap:
     ssid: "${esp_name} FBHS"
     password: !secret Fallback_Hotspot
@@ -40,6 +43,7 @@ json:
 uart:
   id: uart_bus
   rx_pin: GPIO16
+  tx_pin: GPIO18
   baud_rate: 115200
   rx_buffer_size: 4096
 
@@ -75,6 +79,18 @@ globals:
   - id: burner_status_map
     type: std::map<int, std::string>
     restore_value: false
+  - id: last_data_ms
+    type: uint32_t
+    restore_value: false
+    initial_value: "0"
+  - id: last_link_ms
+    type: uint32_t
+    restore_value: false
+    initial_value: "0"
+  - id: data_stale
+    type: bool
+    restore_value: false
+    initial_value: "true"
 
 esphome:
   name: $esp_name
@@ -333,19 +349,35 @@ interval:
           while (id(uart_bus).available()) {
                       uint8_t c;
                       id(uart_bus).read_byte(&c);
+                      if (c == '\r') continue;
                       if (c == '\n') {
+                        if (id(line_buffer).empty()) continue;
                         json::parse_json(id(line_buffer), [](JsonObject root) -> bool {
 
-                          // FIX 1 — modern ArduinoJson check
+                          // Status line from ESP-1
+                          if (root["poller"].is<JsonObject>()) {
+                            JsonObject p = root["poller"].as<JsonObject>();
+                            id(last_link_ms) = millis();
+                            int rssi = p["rssi"] | 0;
+                            id(poller_rssi).publish_state(rssi == 0 ? NAN : (float) rssi);
+                            id(poller_uptime).publish_state(p["uptime"] | 0.0f);
+                            id(xtend_api_ok).publish_state(p["http_ok"] | false);
+                            id(poller_maintenance).publish_state(p["maint"] | false);
+                            id(poller_ssid).publish_state(p["ssid"] | "");
+                            id(poller_ip).publish_state(p["ip"] | "");
+                            return true;
+                          }
+
+                          // Xtend API response
                           if (!root["stats"].is<JsonObject>()) return false;
                           JsonObject stats = root["stats"].as<JsonObject>();
 
-                          // DEBUG: toon alle ontvangen codes 1x per regel (verwijder als niet meer nodig)
+                          // DEBUG: log all received codes once per line (remove when no longer needed)
                           std::string seen_codes;
                           for (JsonPair kv : stats) { seen_codes += kv.key().c_str(); seen_codes += " "; }
-                          ESP_LOGD("xtend_debug", "Ontvangen codes (%d): %s", (int) stats.size(), seen_codes.c_str());
+                          ESP_LOGD("xtend_debug", "Received codes (%d): %s", (int) stats.size(), seen_codes.c_str());
 
-                          // EEN doorloop: per key eerst enum/bitmasker-checks, anders generieke sensor
+                          // Single pass: enum/bitmask checks per key first, otherwise the generic sensor
                           for (JsonPair kv : stats) {
                             std::string code = kv.key().c_str();
                             float raw = kv.value().as<float>();
@@ -414,7 +446,7 @@ interval:
                               id(burner_status).publish_state(it2 != mm.end() ? it2->second : ("Unknown (" + std::to_string(v) + ")"));
                               continue;
                             }
-                            // status_5.digitalOut (65d0) - bitmasker
+                            // status_5.digitalOut (65d0) - bitmask
                             if (code == "65d0") {
                               uint32_t v = (uint32_t) raw;
                               static const char* bitnames[] = {"Compressor", "Water pump", "4-way valve", "Fan motor", "Antifreeze heating strip", "Crankcase antifreeze heating strip", "Spray valve", "Auxiliary electric heater", "DHW pump", "3-way valve"};
@@ -423,7 +455,7 @@ interval:
                               id(digital_out).publish_state(s.empty() ? "None" : s);
                               continue;
                             }
-                            // status_3.Flags (77c3) - bitmasker
+                            // status_3.Flags (77c3) - bitmask
                             if (code == "77c3") {
                               uint32_t v = (uint32_t) raw;
                               static const char* bitnames[] = {"Low load enabled", "Controlling supply temperature", "Progressive temperature request", "Silent mode active", "Heat pump forced to max power", "Heat pump regulating max power", "Was at minimum frequency", "Compressor was on"};
@@ -432,7 +464,7 @@ interval:
                               id(status3_flags).publish_state(s.empty() ? "None" : s);
                               continue;
                             }
-                            // status_3.SystemIo (77d2) - bitmasker
+                            // status_3.SystemIo (77d2) - bitmask
                             if (code == "77d2") {
                               uint32_t v = (uint32_t) raw;
                               static const char* bitnames[] = {"DHW pump on", "CH pump on", "Pressure detected", "System flow detected", "DHW flow detected", "Compressor running", "Switched on", "Boiler OpenTherm connected", "Boiler requested", "Thermostat 1 OpenTherm connected", "Thermostat 1 short circuit", "Thermostat 2 OpenTherm connected", "Thermostat 2 short circuit", "Commissioning", "Gateway connected"};
@@ -441,7 +473,7 @@ interval:
                               id(system_io).publish_state(s.empty() ? "None" : s);
                               continue;
                             }
-                            // boiler_control.boiler_control_flags (b28c) - bitmasker
+                            // boiler_control.boiler_control_flags (b28c) - bitmask
                             if (code == "b28c") {
                               uint32_t v = (uint32_t) raw;
                               static const char* bitnames[] = {"Boiler overtemperature shutdown", "Boiler not responding", "Low load flame on", "Low load flame on (previous)", "Temperature blanking active"};
@@ -450,7 +482,7 @@ interval:
                               id(boiler_control_flags).publish_state(s.empty() ? "None" : s);
                               continue;
                             }
-                            // bivalent_service.flags (f9f2) - bitmasker
+                            // bivalent_service.flags (f9f2) - bitmask
                             if (code == "f9f2") {
                               uint32_t v = (uint32_t) raw;
                               static const char* bitnames[] = {"Heat pump not allowed", "HP failed, backup active", "Boiler needed", "HP COP efficiency OK", "Initial delay done", "Starting with boiler immediately", "Backup requested (previous)", "Heat pump requested", "Boiler requested", "Boiler actual state", "Boiler open-loop control", "Boiler flame detected", "Boiler flame duration short", "Low load detected", "Defrost active", "Blocking HP clock program"};
@@ -460,7 +492,7 @@ interval:
                               continue;
                             }
 
-                            // generieke numerieke sensor (fallback als geen van bovenstaande codes matchte)
+                            // Generic numeric sensor (fallback when none of the codes above matched)
                             auto it = id(xtend_sensors).find(code);
                             if (it == id(xtend_sensors).end()) continue;
 
@@ -472,17 +504,77 @@ interval:
                             s->publish_state(raw * factor);
                           }
 
-                          // BYTES/STRING SENSOREN
+                          // Byte/string sensors
                           if (stats["47e0"].is<const char*>())
                             id(software_version).publish_state(stats["47e0"].as<std::string>());
 
+                          id(last_data_ms) = millis();
+                          id(last_link_ms) = millis();
                           return true;
                         });
                         id(line_buffer).clear();
-                      } else {
+                      } else if (id(line_buffer).size() < 4096) {
                         id(line_buffer) += (char) c;
+                      } else {
+                        ESP_LOGW("xtend", "Line too long, dropping buffer");
+                        id(line_buffer).clear();
                       }
                     }
+
+  # Watchdog: when no Xtend data arrives for 60 s, numeric sensors go to unknown
+  - interval: 5s
+    then:
+      - lambda: |-
+          uint32_t now = millis();
+          bool data_fresh = id(last_data_ms) != 0 && (now - id(last_data_ms)) < 60000;
+          bool link_fresh = id(last_link_ms) != 0 && (now - id(last_link_ms)) < 90000;
+          id(xtend_data_ok).publish_state(data_fresh);
+          id(poller_link).publish_state(link_fresh);
+          if (!data_fresh && !id(data_stale)) {
+            ESP_LOGW("xtend", "No Xtend data for 60 s, marking sensors unknown");
+            for (auto &kv : id(xtend_sensors)) std::get<0>(kv.second)->publish_state(NAN);
+            id(data_stale) = true;
+          } else if (data_fresh) {
+            id(data_stale) = false;
+          }
+
+button:
+  - platform: template
+    name: "Xtend Poller Maintenance Mode"
+    icon: mdi:wrench
+    entity_category: config
+    on_press:
+      - uart.write:
+          id: uart_bus
+          data: "MAINT\n"
+  - platform: template
+    name: "Xtend Poller Restart"
+    icon: mdi:restart
+    entity_category: config
+    on_press:
+      - uart.write:
+          id: uart_bus
+          data: "REBOOT\n"
+
+binary_sensor:
+  - platform: template
+    name: "Xtend Data OK"
+    id: xtend_data_ok
+    device_class: connectivity
+  - platform: template
+    name: "Xtend API Reachable"
+    id: xtend_api_ok
+    device_class: connectivity
+    entity_category: diagnostic
+  - platform: template
+    name: "Xtend Poller Link"
+    id: poller_link
+    device_class: connectivity
+    entity_category: diagnostic
+  - platform: template
+    name: "Xtend Poller Maintenance Active"
+    id: poller_maintenance
+    entity_category: diagnostic
 
 text_sensor:
   - platform: template
@@ -541,6 +633,16 @@ text_sensor:
     name: "Xtend Software Version"
     id: software_version
 
+  - platform: template
+    name: "Xtend Poller SSID"
+    id: poller_ssid
+    entity_category: diagnostic
+
+  - platform: template
+    name: "Xtend Poller IP"
+    id: poller_ip
+    entity_category: diagnostic
+
 sensor:
   - platform: template
     name: "Xtend Power, Heat pump"
@@ -548,11 +650,12 @@ sensor:
     unit_of_measurement: "kW"
     device_class: power
     state_class: measurement
-    accuracy_decimals: 0
+    accuracy_decimals: 2
 
   - platform: template
     name: "Xtend Power, COP"
     id: current_cop
+    state_class: measurement
     accuracy_decimals: 1
 
   - platform: template
@@ -569,7 +672,7 @@ sensor:
     unit_of_measurement: "kW"
     device_class: power
     state_class: measurement
-    accuracy_decimals: 0
+    accuracy_decimals: 2
 
   - platform: template
     name: "Xtend Power, Boiler"
@@ -577,7 +680,7 @@ sensor:
     unit_of_measurement: "kW"
     device_class: power
     state_class: measurement
-    accuracy_decimals: 0
+    accuracy_decimals: 2
 
   - platform: template
     name: "Xtend Energy, Heat Pump Used, Previous Day"
@@ -601,12 +704,12 @@ sensor:
     unit_of_measurement: "kW"
     device_class: power
     state_class: measurement
-    accuracy_decimals: 0
+    accuracy_decimals: 2
 
   - platform: template
     name: "Xtend Energy, Heat Pump COP, Previous Day"
     id: cop_heating_prevday
-    state_class: total
+    state_class: measurement
     accuracy_decimals: 1
 
   - platform: template
@@ -895,3 +998,21 @@ sensor:
     name: "Xtend Boiler Flame State (raw)"
     id: boiler_flame_state_raw
     accuracy_decimals: 0
+
+  - platform: template
+    name: "Xtend Poller WiFi Signal"
+    id: poller_rssi
+    unit_of_measurement: "dBm"
+    device_class: signal_strength
+    state_class: measurement
+    accuracy_decimals: 0
+    entity_category: diagnostic
+
+  - platform: template
+    name: "Xtend Poller Uptime"
+    id: poller_uptime
+    unit_of_measurement: "s"
+    device_class: duration
+    state_class: total_increasing
+    accuracy_decimals: 0
+    entity_category: diagnostic
