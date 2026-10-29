@@ -51,7 +51,7 @@ ESP-1 lives on the Xtend's network, so it is not reachable for normal OTA. Press
 Example of result:
 <img width="423" height="1358" alt="image" src="https://github.com/user-attachments/assets/8da9e28a-c9f6-44da-8721-6e3009c3753a" />
 
-Met hulp van: 
+With the help of: 
 https://github.com/thomasvt1/xtend-bridge/blob/main/parse-message.js
 https://github.com/WillemD61/XTEND-plugin
 https://github.com/thomasvt1/xtend-bridge
