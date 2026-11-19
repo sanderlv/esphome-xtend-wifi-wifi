@@ -6,6 +6,10 @@ Complete ESPHome configuration for monitoring an Intergas Xtend heat pump with t
 
 This project enables real-time monitoring of 66+ sensors from your Intergas Xtend heat pump system, integrating seamlessly with Home Assistant and uses ESPhome.io
 
+**Tested firmware**
+
+Tested on Xtend firmware **V0.90** (web-app v0.6.2). Newer firmware (0.91 and up) may report some fields differently; see [issue #2](https://github.com/sanderlv/esphome-xtend-wifi-wifi/issues/2). Pull requests for newer firmware are welcome.
+
 **Hardware Setup**
 
 ESP-1 (Xtend side): Connects to the Xtend's own WiFi access point, polls its local API every 10 s and forwards the JSON to ESP-2 over UART
