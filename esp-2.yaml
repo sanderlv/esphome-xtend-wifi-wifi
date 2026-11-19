@@ -462,7 +462,7 @@ interval:
                             // status_3.SystemIo (77d2) - bitmask
                             if (code == "77d2") {
                               uint32_t v = (uint32_t) raw;
-                              static const char* bitnames[] = {"DHW pump on", "CH pump on", "Pressure detected", "System flow detected", "DHW flow detected", "Compressor running", "Switched on", "Boiler OpenTherm connected", "Boiler requested", "Thermostat 1 OpenTherm connected", "Thermostat 1 short circuit", "Thermostat 2 OpenTherm connected", "Thermostat 2 short circuit", "Commissioning", "Gateway connected"};
+                              static const char* bitnames[] = {"DHW pump on", "CH pump on", "Pressure detected", "System flow detected", "DHW flow detected", "Compressor running", "Switched on", "Boiler OpenTherm connected", "Boiler requested", "Thermostat 1 OpenTherm connected", "Thermostat 1 heat demand", "Thermostat 2 OpenTherm connected", "Thermostat 2 heat demand", "Commissioning", "Gateway connected"};
                               std::string s;
                               for (int b = 0; b < 15; b++) { if (v & (1u << b)) { if (!s.empty()) s += ", "; s += bitnames[b]; } }
                               id(system_io).publish_state(s.empty() ? "None" : s);
